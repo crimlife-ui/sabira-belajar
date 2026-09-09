@@ -1,12 +1,15 @@
-﻿import React from "react";
+import React from "react";
 import { ArrowLeft, Volume2, VolumeX, Shield, Star } from "lucide-react";
 import { sounds } from "../../utils/audioEffects";
+import { UserProfile } from "./ProfileModal";
 
 interface TopBarProps {
   title?: string;
   onBack?: () => void;
   stars: number;
   soundEnabled: boolean;
+  profile?: UserProfile;
+  onOpenProfile?: () => void;
   onToggleSound: () => void;
   onOpenParental: () => void;
   onOpenStickers: () => void;
@@ -17,6 +20,8 @@ export const TopBar: React.FC<TopBarProps> = ({
   onBack,
   stars,
   soundEnabled,
+  profile,
+  onOpenProfile,
   onToggleSound,
   onOpenParental,
   onOpenStickers,
@@ -41,7 +46,7 @@ export const TopBar: React.FC<TopBarProps> = ({
           <div className="flex items-center gap-2">
             <span className="text-3xl animate-bounce-slow">🎈</span>
             <h1 className="text-xl sm:text-2xl font-black tracking-wide bg-gradient-to-r from-pink-500 via-purple-600 to-indigo-600 bg-clip-text text-transparent">
-              Sabira Belajar
+              {profile ? `${profile.name} Belajar` : "Sabira Belajar"}
             </h1>
           </div>
         )}
@@ -54,8 +59,23 @@ export const TopBar: React.FC<TopBarProps> = ({
         </div>
       )}
 
-      {/* Right section: Stars, Sound, Parents */}
+      {/* Right section: Profile, Stars, Sound, Parents */}
       <div className="flex items-center gap-2 sm:gap-3">
+        {/* Profile Avatar Button */}
+        {profile && onOpenProfile && (
+          <button
+            onClick={() => {
+              sounds.playPop();
+              onOpenProfile();
+            }}
+            className="flex items-center gap-1.5 px-2.5 py-1 bg-white/90 hover:bg-white text-slate-800 font-black rounded-2xl shadow-md border-2 border-pink-200 active:scale-95 transition-all cursor-pointer"
+            title={`Profil: ${profile.name} (${profile.age} Thn) - Klik untuk ubah`}
+          >
+            <span className="text-xl sm:text-2xl">{profile.avatar}</span>
+            <span className="text-xs sm:text-sm hidden md:inline">{profile.name}</span>
+          </button>
+        )}
+
         {/* Stars Badge & Sticker Button */}
         <button
           onClick={() => {

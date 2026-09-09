@@ -3,6 +3,7 @@ import confetti from "canvas-confetti";
 import { Sparkles, Star, BookOpen, Hash, Calculator, Award } from "lucide-react";
 import { TopBar } from "./components/common/TopBar";
 import { ParentalModal } from "./components/common/ParentalModal";
+import { ProfileModal, UserProfile } from "./components/common/ProfileModal";
 import { LetterExplorer } from "./components/letters/LetterExplorer";
 import { SpellingGame } from "./components/letters/SpellingGame";
 import { SyllableSpellingGame } from "./components/letters/SyllableSpellingGame";
@@ -22,9 +23,31 @@ export const App: React.FC = () => {
   const [letterTab, setLetterTab] = useState<LetterMode>("explore");
   const [numberTab, setNumberTab] = useState<"explore" | "counting">("explore");
 
+  // Profile management (First-time onboarding detection)
+  const [profile, setProfile] = useState<UserProfile | null>(() => {
+    const saved = localStorage.getItem("sabira_profile");
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch {
+        return null;
+      }
+    }
+    return null;
+  });
+
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(() => {
+    // If no profile saved yet, open modal immediately for first-time access
+    return localStorage.getItem("sabira_profile") === null;
+  });
+
+  const [isFirstTimeProfile, setIsFirstTimeProfile] = useState(() => {
+    return localStorage.getItem("sabira_profile") === null;
+  });
+
   const [stars, setStars] = useState<number>(() => {
     const saved = localStorage.getItem("sabira_stars");
-    return saved ? parseInt(saved, 10) : 3; // start with 3 welcome stars!
+    return saved ? parseInt(saved, 10) : 3;
   });
 
   const [soundEnabled, setSoundEnabled] = useState<boolean>(() => {
@@ -36,20 +59,17 @@ export const App: React.FC = () => {
   const [isStickersOpen, setIsStickersOpen] = useState(false);
   const [unlockedCelebration, setUnlockedCelebration] = useState<string | null>(null);
 
-  // Sync sounds helper with state
   useEffect(() => {
     sounds.setSoundEnabled(soundEnabled);
     speech.setSpeechEnabled(soundEnabled);
     localStorage.setItem("sabira_sound", String(soundEnabled));
   }, [soundEnabled]);
 
-  // Sync stars with localStorage and check for new sticker unlocks
   const handleEarnStar = () => {
     setStars((prev) => {
       const next = prev + 1;
       localStorage.setItem("sabira_stars", String(next));
 
-      // Check if newly unlocked a sticker
       const newlyUnlocked = STICKERS_LIST.find((s) => s.requiredStars === next);
       if (newlyUnlocked) {
         setUnlockedCelebration(newlyUnlocked.name);
@@ -77,6 +97,16 @@ export const App: React.FC = () => {
     setSoundEnabled((prev) => !prev);
   };
 
+  const handleSaveProfile = (newProfile: UserProfile) => {
+    setProfile(newProfile);
+    localStorage.setItem("sabira_profile", JSON.stringify(newProfile));
+    setIsProfileModalOpen(false);
+    setIsFirstTimeProfile(false);
+  };
+
+  const childName = profile ? profile.name : "Sabira";
+  const childAvatar = profile ? profile.avatar : "👧🏻";
+
   const getScreenTitle = () => {
     switch (currentScreen) {
       case "letters":
@@ -102,6 +132,11 @@ export const App: React.FC = () => {
         onBack={currentScreen !== "home" ? () => setCurrentScreen("home") : undefined}
         stars={stars}
         soundEnabled={soundEnabled}
+        profile={profile || undefined}
+        onOpenProfile={() => {
+          setIsFirstTimeProfile(false);
+          setIsProfileModalOpen(true);
+        }}
         onToggleSound={handleToggleSound}
         onOpenParental={() => setIsParentalOpen(true)}
         onOpenStickers={() => setIsStickersOpen(true)}
@@ -117,10 +152,10 @@ export const App: React.FC = () => {
               <div className="space-y-2 text-center sm:text-left z-10">
                 <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/20 backdrop-blur rounded-full text-xs sm:text-sm font-bold tracking-wide text-white">
                   <Sparkles className="w-4 h-4 text-yellow-300 fill-yellow-200" />
-                  <span>Dunia Belajar Anak Pintar</span>
+                  <span>Dunia Belajar {childName}</span>
                 </div>
                 <h2 className="text-2xl sm:text-4xl font-black tracking-tight drop-shadow-md">
-                  Halo Sabira! Ayo Belajar & Bermain!
+                  Halo {childName}! Ayo Belajar & Bermain!
                 </h2>
                 <p className="text-white/90 text-sm sm:text-base font-medium max-w-lg">
                   Pilih petualanganmu hari ini: mengenal huruf, mengeja suku kata, berhitung angka, atau matematika seru!
@@ -131,12 +166,12 @@ export const App: React.FC = () => {
               <div
                 onClick={() => {
                   sounds.playPop();
-                  speech.speak("Halo! Aku Sabira! Ayo kita belajar bersama-sama ya!", 0.95, 1.2);
+                  speech.speak(`Halo! Aku ${childName}! Ayo kita belajar bersama-sama ya!`, 0.95, 1.2);
                 }}
                 className="w-24 h-24 sm:w-32 sm:h-32 bg-white/30 backdrop-blur rounded-full border-4 border-white flex items-center justify-center text-5xl sm:text-6xl shadow-inner cursor-pointer active:scale-90 transition-transform hover:rotate-6 select-none shrink-0"
-                title="Sentuh aku!"
+                title={`Profil ${childName} - Sentuh aku!`}
               >
-                👧🏻
+                {childAvatar}
               </div>
             </div>
 
@@ -367,6 +402,15 @@ export const App: React.FC = () => {
       <footer className="w-full max-w-5xl mx-auto px-4 py-3 text-center text-xs font-semibold text-slate-500">
         Sabira Belajar &bull; Teman Ceria Belajar Membaca & Menghitung
       </footer>
+
+      {/* Profile Modal (First-time onboarding & Edit) */}
+      <ProfileModal
+        isOpen={isProfileModalOpen}
+        isFirstTime={isFirstTimeProfile}
+        initialProfile={profile || undefined}
+        onSave={handleSaveProfile}
+        onClose={() => setIsProfileModalOpen(false)}
+      />
 
       {/* Parental Gate Modal */}
       <ParentalModal
