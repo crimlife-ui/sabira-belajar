@@ -308,9 +308,9 @@ export const App: React.FC = () => {
             {letterTab === "explore" ? (
               <LetterExplorer />
             ) : letterTab === "spelling" ? (
-              <SpellingGame onEarnStar={handleEarnStar} />
+              <SpellingGame onEarnStar={handleEarnStar} onBackToHome={() => setCurrentScreen("home")} />
             ) : (
-              <SyllableSpellingGame onEarnStar={handleEarnStar} />
+              <SyllableSpellingGame onEarnStar={handleEarnStar} onBackToHome={() => setCurrentScreen("home")} />
             )}
           </div>
         )}
@@ -352,14 +352,14 @@ export const App: React.FC = () => {
             {numberTab === "explore" ? (
               <NumberExplorer />
             ) : (
-              <CountingGame onEarnStar={handleEarnStar} />
+              <CountingGame onEarnStar={handleEarnStar} onBackToHome={() => setCurrentScreen("home")} />
             )}
           </div>
         )}
 
         {/* ===================== SCREEN: MATH ===================== */}
         {currentScreen === "math" && (
-          <VisualMathGame onEarnStar={handleEarnStar} />
+          <VisualMathGame onEarnStar={handleEarnStar} onBackToHome={() => setCurrentScreen("home")} />
         )}
       </main>
 

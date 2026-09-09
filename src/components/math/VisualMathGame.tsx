@@ -1,14 +1,17 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import confetti from "canvas-confetti";
 import { Sparkles, ArrowRight, Plus, Minus, Star, Shuffle } from "lucide-react";
 import { sounds } from "../../utils/audioEffects";
 import { speech } from "../../utils/speechHelper";
+import { SessionCompleteModal } from "../common/SessionCompleteModal";
 
 interface VisualMathGameProps {
   onEarnStar: () => void;
+  onBackToHome?: () => void;
 }
 
 type MathOperation = "add" | "subtract";
+const SESSION_SIZE = 10;
 
 const MATH_ITEMS = [
   { name: "Apel", emoji: "🍎" },
@@ -39,36 +42,41 @@ const MATH_ITEMS = [
   { name: "Kupu-Kupu", emoji: "🦋" },
   { name: "Kapal", emoji: "🚢" },
   { name: "Anak Ayam", emoji: "🐥" },
+  { name: "Kura-Kura", emoji: "🐢" },
+  { name: "Mangga", emoji: "🥭" },
+  { name: "Nanas", emoji: "🍍" },
+  { name: "Anggur", emoji: "🍇" },
+  { name: "Sepeda", emoji: "🚲" },
+  { name: "Robot", emoji: "🤖" },
+  { name: "Piala Emas", emoji: "🏆" },
+  { name: "Gitar", emoji: "🎸" },
+  { name: "Kereta", emoji: "🚂" },
+  { name: "Singa", emoji: "🦁" },
+  { name: "Kuda", emoji: "🐴" },
+  { name: "Gajah", emoji: "🐘" },
 ];
 
-export const VisualMathGame: React.FC<VisualMathGameProps> = ({ onEarnStar }) => {
+export const VisualMathGame: React.FC<VisualMathGameProps> = ({ onEarnStar, onBackToHome }) => {
   const [operation, setOperation] = useState<MathOperation>("add");
-  const [maxRange, setMaxRange] = useState<number>(5); // 5 or 10
+  const [maxRange, setMaxRange] = useState<number>(5);
+
+  const [sessionStep, setSessionStep] = useState(0);
+  const [isSessionComplete, setIsSessionComplete] = useState(false);
 
   const [numA, setNumA] = useState(2);
   const [numB, setNumB] = useState(1);
   const [itemTheme, setItemTheme] = useState(MATH_ITEMS[0]);
-  const [questionCount, setQuestionCount] = useState(1);
   const [options, setOptions] = useState<number[]>([]);
   const [isCompleted, setIsCompleted] = useState(false);
   const [selectedWrong, setSelectedWrong] = useState<number | null>(null);
 
   const correctAnswer = operation === "add" ? numA + numB : numA - numB;
 
-  useEffect(() => {
-    generateProblem();
-  }, [operation, maxRange]);
-
-  const generateProblem = () => {
+  const generateProblem = useCallback(() => {
     setIsCompleted(false);
     setSelectedWrong(null);
 
-    // Pick random item theme different from current
-    let nextThemeIdx = Math.floor(Math.random() * MATH_ITEMS.length);
-    if (MATH_ITEMS[nextThemeIdx].name === itemTheme.name) {
-      nextThemeIdx = (nextThemeIdx + 1) % MATH_ITEMS.length;
-    }
-    const theme = MATH_ITEMS[nextThemeIdx];
+    const theme = MATH_ITEMS[Math.floor(Math.random() * MATH_ITEMS.length)];
     setItemTheme(theme);
 
     let a = 1;
@@ -76,20 +84,19 @@ export const VisualMathGame: React.FC<VisualMathGameProps> = ({ onEarnStar }) =>
 
     if (operation === "add") {
       if (maxRange === 5) {
-        a = Math.floor(Math.random() * 3) + 1; // 1 to 3
-        b = Math.floor(Math.random() * (5 - a)) + 1; // sum <= 5
+        a = Math.floor(Math.random() * 3) + 1;
+        b = Math.floor(Math.random() * (5 - a)) + 1;
       } else {
-        a = Math.floor(Math.random() * 5) + 1; // 1 to 5
-        b = Math.floor(Math.random() * (10 - a)) + 1; // sum <= 10
+        a = Math.floor(Math.random() * 5) + 1;
+        b = Math.floor(Math.random() * (10 - a)) + 1;
       }
     } else {
-      // subtraction: a >= b
       if (maxRange === 5) {
-        a = Math.floor(Math.random() * 4) + 2; // 2 to 5
-        b = Math.floor(Math.random() * (a - 1)) + 1; // 1 to a-1 (result > 0)
+        a = Math.floor(Math.random() * 4) + 2;
+        b = Math.floor(Math.random() * (a - 1)) + 1;
       } else {
-        a = Math.floor(Math.random() * 7) + 3; // 3 to 10
-        b = Math.floor(Math.random() * (a - 1)) + 1; // result > 0
+        a = Math.floor(Math.random() * 7) + 3;
+        b = Math.floor(Math.random() * (a - 1)) + 1;
       }
     }
 
@@ -98,7 +105,6 @@ export const VisualMathGame: React.FC<VisualMathGameProps> = ({ onEarnStar }) =>
 
     const ans = operation === "add" ? a + b : a - b;
 
-    // Generate 3 choices
     const opts = new Set<number>([ans]);
     while (opts.size < 3) {
       const delta = (Math.random() > 0.5 ? 1 : -1) * (Math.floor(Math.random() * 2) + 1);
@@ -109,7 +115,6 @@ export const VisualMathGame: React.FC<VisualMathGameProps> = ({ onEarnStar }) =>
     }
     setOptions(Array.from(opts).sort((x, y) => x - y));
 
-    // Audio instruction
     setTimeout(() => {
       if (operation === "add") {
         speech.speak(`${a} ditambah ${b}, ada berapa semuanya?`, 0.9, 1.15);
@@ -117,11 +122,15 @@ export const VisualMathGame: React.FC<VisualMathGameProps> = ({ onEarnStar }) =>
         speech.speak(`${a} dikurangi ${b}, tersisa berapa?`, 0.9, 1.15);
       }
     }, 300);
-  };
+  }, [operation, maxRange]);
 
-  const handleNextRandom = () => {
-    sounds.playPop();
-    setQuestionCount((c) => c + 1);
+  useEffect(() => {
+    generateProblem();
+  }, [sessionStep, generateProblem]);
+
+  const startNewSession = () => {
+    setSessionStep(0);
+    setIsSessionComplete(false);
     generateProblem();
   };
 
@@ -151,8 +160,40 @@ export const VisualMathGame: React.FC<VisualMathGameProps> = ({ onEarnStar }) =>
     }
   };
 
+  const handleNextQuestion = () => {
+    sounds.playPop();
+    if (sessionStep + 1 >= SESSION_SIZE) {
+      setIsSessionComplete(true);
+    } else {
+      setSessionStep((s) => s + 1);
+    }
+  };
+
   return (
-    <div className="max-w-xl mx-auto space-y-6">
+    <div className="max-w-xl mx-auto space-y-6 animate-fadeIn">
+      {/* Session Progress Bar (10 Soal per Sesi) */}
+      <div className="bg-white/90 backdrop-blur rounded-2xl p-3 shadow-md border-2 border-indigo-200">
+        <div className="flex justify-between items-center text-xs sm:text-sm font-black text-slate-600 mb-1.5">
+          <span className="flex items-center gap-1.5 text-indigo-600">
+            <Shuffle className="w-4 h-4" /> Soal {sessionStep + 1} dari {SESSION_SIZE}
+          </span>
+          <span className="text-slate-400 font-bold">
+            Bank: {MATH_ITEMS.length} Tema Benda
+          </span>
+          <span className="text-amber-500 flex items-center gap-1">
+            <Star className="w-4 h-4 fill-amber-400" /> +1 Bintang
+          </span>
+        </div>
+
+        {/* Visual Progress Track */}
+        <div className="w-full bg-slate-100 rounded-full h-3 overflow-hidden border border-slate-200">
+          <div
+            className="bg-gradient-to-r from-indigo-500 to-purple-500 h-full rounded-full transition-all duration-500 ease-out"
+            style={{ width: `${((sessionStep + (isCompleted ? 1 : 0)) / SESSION_SIZE) * 100}%` }}
+          />
+        </div>
+      </div>
+
       {/* Mode Controls: Add vs Subtract & Difficulty */}
       <div className="flex flex-wrap items-center justify-between gap-3 bg-white/80 backdrop-blur p-3 rounded-2xl border border-slate-200 shadow-sm">
         {/* Operation Tabs */}
@@ -161,6 +202,7 @@ export const VisualMathGame: React.FC<VisualMathGameProps> = ({ onEarnStar }) =>
             onClick={() => {
               sounds.playPop();
               setOperation("add");
+              startNewSession();
             }}
             className={`px-4 py-2 rounded-xl font-black text-sm flex items-center gap-1.5 transition-all cursor-pointer ${
               operation === "add"
@@ -175,6 +217,7 @@ export const VisualMathGame: React.FC<VisualMathGameProps> = ({ onEarnStar }) =>
             onClick={() => {
               sounds.playPop();
               setOperation("subtract");
+              startNewSession();
             }}
             className={`px-4 py-2 rounded-xl font-black text-sm flex items-center gap-1.5 transition-all cursor-pointer ${
               operation === "subtract"
@@ -193,6 +236,7 @@ export const VisualMathGame: React.FC<VisualMathGameProps> = ({ onEarnStar }) =>
             onClick={() => {
               sounds.playPop();
               setMaxRange(5);
+              startNewSession();
             }}
             className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
               maxRange === 5
@@ -206,6 +250,7 @@ export const VisualMathGame: React.FC<VisualMathGameProps> = ({ onEarnStar }) =>
             onClick={() => {
               sounds.playPop();
               setMaxRange(10);
+              startNewSession();
             }}
             className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
               maxRange === 10
@@ -220,19 +265,8 @@ export const VisualMathGame: React.FC<VisualMathGameProps> = ({ onEarnStar }) =>
 
       {/* Main Question Card */}
       <div className="bg-white/95 backdrop-blur rounded-3xl p-6 sm:p-8 shadow-xl border-4 border-indigo-200 text-center relative overflow-hidden">
-        <div className="flex justify-between items-center text-xs sm:text-sm font-bold text-slate-500 mb-3">
-          <div className="flex items-center gap-1.5 bg-indigo-100/70 text-indigo-900 px-3 py-1 rounded-full border border-indigo-200">
-            <Shuffle className="w-3.5 h-3.5 text-indigo-600" />
-            <span>Soal Acak #{questionCount} (Bank: {MATH_ITEMS.length} Tema Benda)</span>
-          </div>
-          <span className="text-amber-500 flex items-center gap-1">
-            <Star className="w-4 h-4 fill-amber-400" /> +1 Bintang
-          </span>
-        </div>
-
         {/* Visual Equation Container */}
         {operation === "add" ? (
-          /* ADDITION VISUAL */
           <div className="flex items-center justify-center gap-3 sm:gap-4 my-6">
             {/* Group A */}
             <div className="flex-1 bg-indigo-50/90 rounded-2xl p-4 border-2 border-indigo-200 flex flex-col items-center">
@@ -278,9 +312,7 @@ export const VisualMathGame: React.FC<VisualMathGameProps> = ({ onEarnStar }) =>
             </div>
           </div>
         ) : (
-          /* SUBTRACTION VISUAL */
           <div className="my-6 space-y-4">
-            {/* Expression header */}
             <div className="flex items-center justify-center gap-3 text-3xl sm:text-4xl font-black text-slate-800">
               <span className="text-indigo-600">{numA}</span>
               <span className="text-slate-400">-</span>
@@ -291,9 +323,7 @@ export const VisualMathGame: React.FC<VisualMathGameProps> = ({ onEarnStar }) =>
               </span>
             </div>
 
-            {/* Visual objects display */}
             <div className="p-4 bg-slate-50 rounded-2xl border-2 border-slate-200 flex flex-wrap justify-center gap-3 items-center min-h-[5.5rem]">
-              {/* Remaining items */}
               {Array.from({ length: numA - numB }).map((_, i) => (
                 <div key={`rem-${i}`} className="p-2 bg-emerald-50 rounded-xl border border-emerald-200 flex flex-col items-center">
                   <span className="text-4xl sm:text-5xl animate-bounce-slow">
@@ -302,7 +332,6 @@ export const VisualMathGame: React.FC<VisualMathGameProps> = ({ onEarnStar }) =>
                   <span className="text-xs font-bold text-emerald-700">Sisa</span>
                 </div>
               ))}
-              {/* Subtracted items with X mark */}
               {Array.from({ length: numB }).map((_, i) => (
                 <div key={`sub-${i}`} className="relative p-2 bg-rose-50 rounded-xl border border-rose-200 opacity-60 flex flex-col items-center">
                   <span className="text-4xl sm:text-5xl line-through grayscale">
@@ -355,10 +384,10 @@ export const VisualMathGame: React.FC<VisualMathGameProps> = ({ onEarnStar }) =>
               </span>
             </div>
             <button
-              onClick={handleNextRandom}
+              onClick={handleNextQuestion}
               className="w-full py-4 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-black text-lg sm:text-xl rounded-2xl shadow-lg border-2 border-emerald-300 flex items-center justify-center gap-3 active:scale-95 transition-all cursor-pointer"
             >
-              <span>Soal Acak Berikutnya</span>
+              <span>{sessionStep + 1 >= SESSION_SIZE ? "Lihat Hasil Sesi 10 Soal 🎉" : "Soal Berikutnya"}</span>
               <ArrowRight className="w-6 h-6 stroke-[3]" />
             </button>
           </div>
@@ -368,13 +397,23 @@ export const VisualMathGame: React.FC<VisualMathGameProps> = ({ onEarnStar }) =>
       {/* Auxiliary actions */}
       <div className="flex justify-center gap-3">
         <button
-          onClick={handleNextRandom}
+          onClick={startNewSession}
           className="px-4 py-2.5 bg-white/90 hover:bg-white text-slate-700 font-bold rounded-2xl shadow-sm border border-slate-200 flex items-center gap-2 active:scale-95 transition-all cursor-pointer text-sm"
+          title="Mulai 10 soal baru"
         >
           <Shuffle className="w-4 h-4 text-indigo-500" />
-          <span>Ganti Soal Acak</span>
+          <span>Mulai 10 Soal Baru</span>
         </button>
       </div>
+
+      {/* Session Complete Modal */}
+      <SessionCompleteModal
+        isOpen={isSessionComplete}
+        moduleName="Matematika Ceria"
+        starsEarned={SESSION_SIZE}
+        onPlayAgain={startNewSession}
+        onBackToHome={onBackToHome}
+      />
     </div>
   );
 };

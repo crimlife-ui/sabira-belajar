@@ -1,11 +1,13 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import confetti from "canvas-confetti";
 import { Sparkles, ArrowRight, RotateCcw, Star, Shuffle } from "lucide-react";
 import { sounds } from "../../utils/audioEffects";
 import { speech } from "../../utils/speechHelper";
+import { SessionCompleteModal } from "../common/SessionCompleteModal";
 
 interface CountingGameProps {
   onEarnStar: () => void;
+  onBackToHome?: () => void;
 }
 
 interface CountItem {
@@ -13,6 +15,8 @@ interface CountItem {
   tapped: boolean;
   order: number | null;
 }
+
+const SESSION_SIZE = 10;
 
 const EMOJI_SETS = [
   { name: "Apel", emoji: "🍎", question: "Ada berapa buah apel merah di keranjang?" },
@@ -43,38 +47,57 @@ const EMOJI_SETS = [
   { name: "Wortel", emoji: "🥕", question: "Ada berapa wortel segar dipanen?" },
   { name: "Singa", emoji: "🦁", question: "Ada berapa anak singa sedang bermain?" },
   { name: "Kuda", emoji: "🐴", question: "Ada berapa kuda gagah di padang rumput?" },
+  { name: "Kado", emoji: "🎁", question: "Ada berapa kado kejutan di pesta ulang tahun?" },
+  { name: "Robot", emoji: "🤖", question: "Ada berapa robot canggih di ruangan?" },
+  { name: "Kapal", emoji: "🚢", question: "Ada berapa kapal berlayar di laut lepas?" },
+  { name: "Kereta", emoji: "🚂", question: "Ada berapa gerbong kereta melaju?" },
+  { name: "Sepeda", emoji: "🚲", question: "Ada berapa sepeda terparkir rapi?" },
+  { name: "Ceri", emoji: "🍒", question: "Ada berapa buah ceri merah dipetik?" },
+  { name: "Jeruk", emoji: "🍊", question: "Ada berapa buah jeruk manis segar?" },
+  { name: "Mangga", emoji: "🥭", question: "Ada berapa buah mangga ranum di pohon?" },
+  { name: "Anggur", emoji: "🍇", question: "Ada berapa dompol anggur ungu?" },
+  { name: "Nanas", emoji: "🍍", question: "Ada berapa nanas bermahkota daun?" },
+  { name: "Kue Kering", emoji: "🍪", question: "Ada berapa kue kering cokelat di toples?" },
+  { name: "Piala Emas", emoji: "🏆", question: "Ada berapa piala juara di lemari?" },
+  { name: "Kacamata", emoji: "👓", question: "Ada berapa kacamata di atas meja?" },
+  { name: "Buku Cerita", emoji: "📚", question: "Ada berapa tumpukan buku cerita?" },
+  { name: "Gitar", emoji: "🎸", question: "Ada berapa gitar yang siap dimainkan?" },
+  { name: "Pelangi", emoji: "🌈", question: "Ada berapa pelangi menghiasi langit?" },
+  { name: "Gajah", emoji: "🐘", question: "Ada berapa anak gajah di sungai?" }
 ];
 
-export const CountingGame: React.FC<CountingGameProps> = ({ onEarnStar }) => {
-  const [targetCount, setTargetCount] = useState(3);
-  const [currentSetIndex, setCurrentSetIndex] = useState(() =>
-    Math.floor(Math.random() * EMOJI_SETS.length)
+const getRandomIndices = (total: number, count: number): number[] => {
+  const indices = Array.from({ length: total }, (_, i) => i);
+  const shuffled = indices.sort(() => Math.random() - 0.5);
+  return shuffled.slice(0, Math.min(count, total));
+};
+
+export const CountingGame: React.FC<CountingGameProps> = ({ onEarnStar, onBackToHome }) => {
+  // 10 themes per session
+  const [sessionThemeIndices, setSessionThemeIndices] = useState<number[]>(() =>
+    getRandomIndices(EMOJI_SETS.length, SESSION_SIZE)
   );
-  const [questionCount, setQuestionCount] = useState(1);
+  const [sessionStep, setSessionStep] = useState(0);
+  const [isSessionComplete, setIsSessionComplete] = useState(false);
+
+  const [targetCount, setTargetCount] = useState(3);
   const [items, setItems] = useState<CountItem[]>([]);
   const [options, setOptions] = useState<number[]>([]);
   const [isCompleted, setIsCompleted] = useState(false);
   const [tappedCount, setTappedCount] = useState(0);
   const [selectedWrongAnswer, setSelectedWrongAnswer] = useState<number | null>(null);
 
-  const currentTheme = EMOJI_SETS[currentSetIndex] ?? EMOJI_SETS[0];
+  const currentThemeIndex = sessionThemeIndices[sessionStep] ?? 0;
+  const currentTheme = EMOJI_SETS[currentThemeIndex] ?? EMOJI_SETS[0];
 
-  useEffect(() => {
-    generateRound(currentSetIndex);
-  }, [currentSetIndex]);
-
-  const generateRound = (setIdx: number) => {
+  const generateRound = useCallback((themeObj: typeof EMOJI_SETS[0]) => {
     setIsCompleted(false);
     setSelectedWrongAnswer(null);
     setTappedCount(0);
 
-    const theme = EMOJI_SETS[setIdx];
-
-    // Random count between 1 and 9
     const count = Math.floor(Math.random() * 8) + 2;
     setTargetCount(count);
 
-    // Items array
     const newItems: CountItem[] = Array.from({ length: count }, (_, i) => ({
       id: i,
       tapped: false,
@@ -82,7 +105,6 @@ export const CountingGame: React.FC<CountingGameProps> = ({ onEarnStar }) => {
     }));
     setItems(newItems);
 
-    // Generate 3 choices (1 correct, 2 distractors)
     const opts = new Set<number>([count]);
     while (opts.size < 3) {
       const delta = (Math.random() > 0.5 ? 1 : -1) * (Math.floor(Math.random() * 2) + 1);
@@ -93,13 +115,22 @@ export const CountingGame: React.FC<CountingGameProps> = ({ onEarnStar }) => {
     }
     setOptions(Array.from(opts).sort((a, b) => a - b));
 
-    // Voice prompt
     setTimeout(() => {
-      speech.speak(theme.question, 0.9, 1.15);
+      speech.speak(themeObj.question, 0.9, 1.15);
     }, 300);
+  }, []);
+
+  useEffect(() => {
+    generateRound(currentTheme);
+  }, [currentThemeIndex, generateRound]);
+
+  const startNewSession = () => {
+    const newIndices = getRandomIndices(EMOJI_SETS.length, SESSION_SIZE);
+    setSessionThemeIndices(newIndices);
+    setSessionStep(0);
+    setIsSessionComplete(false);
   };
 
-  // Tapping individual item on screen
   const handleTapItem = (id: number) => {
     const targetItem = items.find((i) => i.id === id);
     if (!targetItem || targetItem.tapped || isCompleted) return;
@@ -115,12 +146,10 @@ export const CountingGame: React.FC<CountingGameProps> = ({ onEarnStar }) => {
     );
   };
 
-  // Answering the question
   const handleSelectOption = (num: number) => {
     sounds.playPop();
 
     if (num === targetCount) {
-      // Correct!
       setIsCompleted(true);
       setSelectedWrongAnswer(null);
       sounds.playCorrectChime();
@@ -136,39 +165,47 @@ export const CountingGame: React.FC<CountingGameProps> = ({ onEarnStar }) => {
         speech.speak(`Benar sekali! Ada ${targetCount} ${currentTheme.name}!`, 0.9, 1.15);
       }, 350);
     } else {
-      // Wrong
       setSelectedWrongAnswer(num);
       sounds.playGentleBoing();
       speech.speak("Bukan itu, yuk coba hitung lagi!", 0.9, 1.1);
     }
   };
 
-  // Move to next random question
-  const handleNextRandom = () => {
+  const handleNextQuestion = () => {
     sounds.playPop();
-    setQuestionCount((c) => c + 1);
-    // Pick different random index
-    let nextIdx = Math.floor(Math.random() * EMOJI_SETS.length);
-    if (nextIdx === currentSetIndex) {
-      nextIdx = (nextIdx + 1) % EMOJI_SETS.length;
+    if (sessionStep + 1 >= SESSION_SIZE) {
+      setIsSessionComplete(true);
+    } else {
+      setSessionStep((s) => s + 1);
     }
-    setCurrentSetIndex(nextIdx);
   };
 
   return (
-    <div className="max-w-xl mx-auto space-y-6">
-      <div className="bg-white/95 backdrop-blur rounded-3xl p-6 sm:p-8 shadow-xl border-4 border-emerald-200 text-center relative overflow-hidden">
-        {/* Top Info */}
-        <div className="flex justify-between items-center text-xs sm:text-sm font-bold text-slate-500 mb-2">
-          <div className="flex items-center gap-1.5 bg-emerald-100/70 text-emerald-900 px-3 py-1 rounded-full border border-emerald-200">
-            <Shuffle className="w-3.5 h-3.5 text-emerald-600" />
-            <span>Soal Acak #{questionCount} (Bank: {EMOJI_SETS.length} Tema)</span>
-          </div>
+    <div className="max-w-xl mx-auto space-y-6 animate-fadeIn">
+      {/* Session Progress Bar (10 Soal per Sesi) */}
+      <div className="bg-white/90 backdrop-blur rounded-2xl p-3 shadow-md border-2 border-emerald-200">
+        <div className="flex justify-between items-center text-xs sm:text-sm font-black text-slate-600 mb-1.5">
+          <span className="flex items-center gap-1.5 text-emerald-600">
+            <Shuffle className="w-4 h-4" /> Soal {sessionStep + 1} dari {SESSION_SIZE}
+          </span>
+          <span className="text-slate-400 font-bold">
+            Bank: {EMOJI_SETS.length} Tema Benda
+          </span>
           <span className="text-amber-500 flex items-center gap-1">
             <Star className="w-4 h-4 fill-amber-400" /> +1 Bintang
           </span>
         </div>
 
+        {/* Visual Progress Track */}
+        <div className="w-full bg-slate-100 rounded-full h-3 overflow-hidden border border-slate-200">
+          <div
+            className="bg-gradient-to-r from-emerald-500 to-teal-500 h-full rounded-full transition-all duration-500 ease-out"
+            style={{ width: `${((sessionStep + (isCompleted ? 1 : 0)) / SESSION_SIZE) * 100}%` }}
+          />
+        </div>
+      </div>
+
+      <div className="bg-white/95 backdrop-blur rounded-3xl p-6 sm:p-8 shadow-xl border-4 border-emerald-200 text-center relative overflow-hidden">
         <h3 className="text-xl sm:text-2xl font-black text-slate-800 mb-4">
           {currentTheme.question}
         </h3>
@@ -226,7 +263,7 @@ export const CountingGame: React.FC<CountingGameProps> = ({ onEarnStar }) => {
           </div>
         </div>
 
-        {/* Completed celebration banner */}
+        {/* Completed banner */}
         {isCompleted && (
           <div className="mt-6 space-y-4 animate-bounce-slow">
             <div className="p-3 bg-emerald-100 border-2 border-emerald-300 rounded-2xl text-emerald-800 font-black text-lg flex items-center justify-center gap-2">
@@ -234,10 +271,10 @@ export const CountingGame: React.FC<CountingGameProps> = ({ onEarnStar }) => {
               <span>Hebat! Ada {targetCount} {currentTheme.name}!</span>
             </div>
             <button
-              onClick={handleNextRandom}
+              onClick={handleNextQuestion}
               className="w-full py-4 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-black text-lg sm:text-xl rounded-2xl shadow-lg border-2 border-emerald-300 flex items-center justify-center gap-3 active:scale-95 transition-all cursor-pointer"
             >
-              <span>Soal Acak Berikutnya</span>
+              <span>{sessionStep + 1 >= SESSION_SIZE ? "Lihat Hasil Sesi 10 Soal 🎉" : "Soal Berikutnya"}</span>
               <ArrowRight className="w-6 h-6 stroke-[3]" />
             </button>
           </div>
@@ -247,16 +284,17 @@ export const CountingGame: React.FC<CountingGameProps> = ({ onEarnStar }) => {
       {/* Auxiliary actions */}
       <div className="flex justify-center gap-3">
         <button
-          onClick={handleNextRandom}
+          onClick={startNewSession}
           className="px-4 py-2.5 bg-white/90 hover:bg-white text-slate-700 font-bold rounded-2xl shadow-sm border border-slate-200 flex items-center gap-2 active:scale-95 transition-all cursor-pointer text-sm"
+          title="Mulai 10 soal baru"
         >
           <Shuffle className="w-4 h-4 text-emerald-500" />
-          <span>Ganti Soal Acak</span>
+          <span>Mulai 10 Soal Baru</span>
         </button>
         <button
           onClick={() => {
             sounds.playPop();
-            generateRound(currentSetIndex);
+            generateRound(currentTheme);
           }}
           className="px-4 py-2.5 bg-white/90 hover:bg-white text-slate-700 font-bold rounded-2xl shadow-sm border border-slate-200 flex items-center gap-2 active:scale-95 transition-all cursor-pointer text-sm"
         >
@@ -264,6 +302,15 @@ export const CountingGame: React.FC<CountingGameProps> = ({ onEarnStar }) => {
           <span>Hitung Ulang</span>
         </button>
       </div>
+
+      {/* Session Complete Modal */}
+      <SessionCompleteModal
+        isOpen={isSessionComplete}
+        moduleName="Hitung Benda Ceria"
+        starsEarned={SESSION_SIZE}
+        onPlayAgain={startNewSession}
+        onBackToHome={onBackToHome}
+      />
     </div>
   );
 };

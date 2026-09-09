@@ -1,29 +1,36 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import confetti from "canvas-confetti";
 import { Sparkles, ArrowRight, RotateCcw, Volume2, Star, Shuffle, AlertCircle, CheckCircle2 } from "lucide-react";
 import { SPELLING_WORDS, SpellingWord } from "../../data/spellingData";
 import { sounds } from "../../utils/audioEffects";
 import { speech } from "../../utils/speechHelper";
+import { SessionCompleteModal } from "../common/SessionCompleteModal";
 
 interface SyllableSpellingGameProps {
   onEarnStar: () => void;
+  onBackToHome?: () => void;
 }
 
-export const SyllableSpellingGame: React.FC<SyllableSpellingGameProps> = ({ onEarnStar }) => {
-  // Shuffled deck of word indices
-  const initialDeck = useMemo(() => {
-    return Array.from({ length: SPELLING_WORDS.length }, (_, i) => i)
-      .sort(() => Math.random() - 0.5);
-  }, []);
+const SESSION_SIZE = 10;
 
-  const [deck, setDeck] = useState<number[]>(initialDeck);
-  const [deckIndex, setDeckIndex] = useState(0);
-  const [questionCount, setQuestionCount] = useState(1);
+// Helper to pick N distinct random indices from array
+const getRandomIndices = (total: number, count: number): number[] => {
+  const indices = Array.from({ length: total }, (_, i) => i);
+  const shuffled = indices.sort(() => Math.random() - 0.5);
+  return shuffled.slice(0, Math.min(count, total));
+};
 
-  const currentWordIndex = deck[deckIndex] ?? 0;
+export const SyllableSpellingGame: React.FC<SyllableSpellingGameProps> = ({ onEarnStar, onBackToHome }) => {
+  // Session indices of 10 random words
+  const [sessionWordIndices, setSessionWordIndices] = useState<number[]>(() =>
+    getRandomIndices(SPELLING_WORDS.length, SESSION_SIZE)
+  );
+  // Current question index in this session (0 to 9)
+  const [sessionStep, setSessionStep] = useState(0);
+  const [isSessionComplete, setIsSessionComplete] = useState(false);
+
+  const currentWordIndex = sessionWordIndices[sessionStep] ?? 0;
   const currentWord: SpellingWord = SPELLING_WORDS[currentWordIndex] ?? SPELLING_WORDS[0];
-
-  // Syllable parts of current word
   const parts = currentWord.parts;
 
   // Active syllable index (0 for 1st syllable, 1 for 2nd, etc.)
@@ -42,12 +49,7 @@ export const SyllableSpellingGame: React.FC<SyllableSpellingGameProps> = ({ onEa
   // Available letter choices to display (scrambled letters of word + distractors)
   const [choices, setChoices] = useState<string[]>([]);
 
-  // Setup round when word changes
-  useEffect(() => {
-    setupWord(currentWord);
-  }, [currentWordIndex]);
-
-  const setupWord = (wordObj: SpellingWord) => {
+  const setupWord = useCallback((wordObj: SpellingWord) => {
     setActivePartIndex(0);
     setActiveLetterIndex(0);
     setPlacedLetters(wordObj.parts.map(() => []));
@@ -78,6 +80,19 @@ export const SyllableSpellingGame: React.FC<SyllableSpellingGameProps> = ({ onEa
         1.15
       );
     }, 350);
+  }, []);
+
+  // Setup round when word changes
+  useEffect(() => {
+    setupWord(currentWord);
+  }, [currentWordIndex, setupWord]);
+
+  // Start a fresh 10-question session
+  const startNewSession = () => {
+    const newIndices = getRandomIndices(SPELLING_WORDS.length, SESSION_SIZE);
+    setSessionWordIndices(newIndices);
+    setSessionStep(0);
+    setIsSessionComplete(false);
   };
 
   const currentPart = parts[activePartIndex];
@@ -114,7 +129,6 @@ export const SyllableSpellingGame: React.FC<SyllableSpellingGameProps> = ({ onEa
         const successText = `${spelledLetters} dibaca ${currentPart.syllable}!`;
         setPartSuccessBanner(successText);
 
-        // Check if this was the last syllable of the whole word
         const nextPartIdx = activePartIndex + 1;
 
         if (nextPartIdx >= parts.length) {
@@ -142,7 +156,7 @@ export const SyllableSpellingGame: React.FC<SyllableSpellingGameProps> = ({ onEa
             );
           }, 450);
         } else {
-          // Move to next syllable after brief encouraging voice
+          // Move to next syllable
           const nextPart = parts[nextPartIdx];
           setTimeout(() => {
             speech.speak(
@@ -152,7 +166,6 @@ export const SyllableSpellingGame: React.FC<SyllableSpellingGameProps> = ({ onEa
             );
           }, 300);
 
-          // Auto-advance to next syllable part after 1.8s
           setTimeout(() => {
             setActivePartIndex(nextPartIdx);
             setActiveLetterIndex(0);
@@ -188,32 +201,20 @@ export const SyllableSpellingGame: React.FC<SyllableSpellingGameProps> = ({ onEa
         1.1
       );
 
-      // Clear shaking state after 600ms
       setTimeout(() => {
         setWrongLetter(null);
       }, 600);
     }
   };
 
-  const handleNextWord = () => {
+  const handleNextQuestion = () => {
     sounds.playPop();
-    setQuestionCount((c) => c + 1);
-
-    if (deckIndex + 1 >= deck.length) {
-      const newDeck = Array.from({ length: SPELLING_WORDS.length }, (_, i) => i)
-        .sort(() => Math.random() - 0.5);
-      setDeck(newDeck);
-      setDeckIndex(0);
+    if (sessionStep + 1 >= SESSION_SIZE) {
+      // Session finished!
+      setIsSessionComplete(true);
     } else {
-      setDeckIndex((prev) => prev + 1);
+      setSessionStep((s) => s + 1);
     }
-  };
-
-  const handleShuffleRandom = () => {
-    sounds.playPop();
-    const randomOffset = Math.floor(Math.random() * (SPELLING_WORDS.length - 1)) + 1;
-    setDeckIndex((prev) => (prev + randomOffset) % deck.length);
-    setQuestionCount((c) => c + 1);
   };
 
   const handleResetWord = () => {
@@ -223,19 +224,31 @@ export const SyllableSpellingGame: React.FC<SyllableSpellingGameProps> = ({ onEa
 
   return (
     <div className="max-w-xl mx-auto space-y-6 animate-fadeIn">
-      {/* Main Question Card */}
-      <div className="bg-white/95 backdrop-blur rounded-3xl p-6 sm:p-8 shadow-xl border-4 border-rose-200 text-center relative overflow-hidden">
-        {/* Header Badges */}
-        <div className="flex justify-between items-center text-xs sm:text-sm font-bold text-slate-500 mb-2">
-          <div className="flex items-center gap-1.5 bg-rose-100/70 text-rose-900 px-3 py-1 rounded-full border border-rose-200">
-            <Shuffle className="w-3.5 h-3.5 text-rose-600" />
-            <span>Eja Suku Kata #{questionCount}</span>
-          </div>
+      {/* Session Progress Bar (10 Soal per Sesi) */}
+      <div className="bg-white/90 backdrop-blur rounded-2xl p-3 shadow-md border-2 border-rose-200">
+        <div className="flex justify-between items-center text-xs sm:text-sm font-black text-slate-600 mb-1.5">
+          <span className="flex items-center gap-1.5 text-rose-600">
+            <Shuffle className="w-4 h-4" /> Soal {sessionStep + 1} dari {SESSION_SIZE}
+          </span>
+          <span className="text-slate-400 font-bold">
+            Bank: {SPELLING_WORDS.length} Kata
+          </span>
           <span className="text-amber-500 flex items-center gap-1">
             <Star className="w-4 h-4 fill-amber-400" /> +1 Bintang
           </span>
         </div>
 
+        {/* Visual Progress Track */}
+        <div className="w-full bg-slate-100 rounded-full h-3 overflow-hidden border border-slate-200">
+          <div
+            className="bg-gradient-to-r from-rose-500 to-pink-500 h-full rounded-full transition-all duration-500 ease-out"
+            style={{ width: `${((sessionStep + (isWordCompleted ? 1 : 0)) / SESSION_SIZE) * 100}%` }}
+          />
+        </div>
+      </div>
+
+      {/* Main Question Card */}
+      <div className="bg-white/95 backdrop-blur rounded-3xl p-6 sm:p-8 shadow-xl border-4 border-rose-200 text-center relative overflow-hidden">
         {/* Big Illustration */}
         <div
           onClick={() => {
@@ -277,9 +290,11 @@ export const SyllableSpellingGame: React.FC<SyllableSpellingGameProps> = ({ onEa
                 {/* Syllable Label */}
                 <div className="flex items-center gap-1.5 text-xs sm:text-sm font-black text-slate-700">
                   <span>Suku Kata {pIdx + 1}:</span>
-                  <span className={`px-2 py-0.5 rounded-lg text-white font-black ${
-                    isCompletedPart ? "bg-emerald-600" : isCurrentPart ? "bg-rose-500" : "bg-slate-400"
-                  }`}>
+                  <span
+                    className={`px-2 py-0.5 rounded-lg text-white font-black ${
+                      isCompletedPart ? "bg-emerald-600" : isCurrentPart ? "bg-rose-500" : "bg-slate-400"
+                    }`}
+                  >
                     {part.syllable}
                   </span>
                   {isCompletedPart && <CheckCircle2 className="w-4 h-4 text-emerald-600 fill-emerald-100" />}
@@ -340,10 +355,10 @@ export const SyllableSpellingGame: React.FC<SyllableSpellingGameProps> = ({ onEa
               </span>
             </div>
             <button
-              onClick={handleNextWord}
+              onClick={handleNextQuestion}
               className="w-full py-4 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-black text-lg sm:text-xl rounded-2xl shadow-lg border-2 border-emerald-300 flex items-center justify-center gap-3 active:scale-95 transition-all cursor-pointer"
             >
-              <span>Lanjut Kata Berikutnya</span>
+              <span>{sessionStep + 1 >= SESSION_SIZE ? "Lihat Hasil Sesi 10 Soal 🎉" : "Lanjut Soal Berikutnya"}</span>
               <ArrowRight className="w-6 h-6 stroke-[3]" />
             </button>
           </div>
@@ -356,7 +371,6 @@ export const SyllableSpellingGame: React.FC<SyllableSpellingGameProps> = ({ onEa
             <div className="flex flex-wrap justify-center gap-2 sm:gap-3 min-h-[4.5rem]">
               {choices.map((char, cIdx) => {
                 const isWrong = wrongLetter === char;
-                // If correction is shown, give gentle pulse hint on the correct letter!
                 const isHintTarget = correctionMsg !== null && char === expectedLetter;
 
                 return (
@@ -397,11 +411,12 @@ export const SyllableSpellingGame: React.FC<SyllableSpellingGameProps> = ({ onEa
           <span>Dengarkan Kata</span>
         </button>
         <button
-          onClick={handleShuffleRandom}
+          onClick={startNewSession}
           className="px-4 py-2.5 bg-white/90 hover:bg-white text-slate-700 font-bold rounded-2xl shadow-sm border border-slate-200 flex items-center gap-2 active:scale-95 transition-all cursor-pointer text-sm"
+          title="Mulai sesi 10 soal baru"
         >
           <Shuffle className="w-4 h-4 text-purple-500" />
-          <span>Ganti Kata Acak</span>
+          <span>Mulai 10 Soal Baru</span>
         </button>
         <button
           onClick={handleResetWord}
@@ -411,6 +426,15 @@ export const SyllableSpellingGame: React.FC<SyllableSpellingGameProps> = ({ onEa
           <span>Ulangi Kata</span>
         </button>
       </div>
+
+      {/* Session Complete Modal */}
+      <SessionCompleteModal
+        isOpen={isSessionComplete}
+        moduleName="Eja Suku Kata"
+        starsEarned={SESSION_SIZE}
+        onPlayAgain={startNewSession}
+        onBackToHome={onBackToHome}
+      />
     </div>
   );
 };
