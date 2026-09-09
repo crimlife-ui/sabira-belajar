@@ -1,6 +1,6 @@
-﻿import React, { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import confetti from "canvas-confetti";
-import { Sparkles, ArrowRight, RotateCcw, Plus, Minus, Star } from "lucide-react";
+import { Sparkles, ArrowRight, Plus, Minus, Star, Shuffle } from "lucide-react";
 import { sounds } from "../../utils/audioEffects";
 import { speech } from "../../utils/speechHelper";
 
@@ -17,7 +17,28 @@ const MATH_ITEMS = [
   { name: "Donat", emoji: "🍩" },
   { name: "Permen", emoji: "🍬" },
   { name: "Bunga", emoji: "🌸" },
-  { name: "Kue", emoji: "🧁" },
+  { name: "Kue Mangkuk", emoji: "🧁" },
+  { name: "Stroberi", emoji: "🍓" },
+  { name: "Mobil", emoji: "🚗" },
+  { name: "Anak Kucing", emoji: "🐱" },
+  { name: "Kelinci", emoji: "🐰" },
+  { name: "Es Krim", emoji: "🍦" },
+  { name: "Pizza", emoji: "🍕" },
+  { name: "Kue Kering", emoji: "🍪" },
+  { name: "Panda", emoji: "🐼" },
+  { name: "Jamur", emoji: "🍄" },
+  { name: "Jeruk", emoji: "🍊" },
+  { name: "Pisang", emoji: "🍌" },
+  { name: "Bebek", emoji: "🦆" },
+  { name: "Ikan", emoji: "🐟" },
+  { name: "Roket", emoji: "🚀" },
+  { name: "Semangka", emoji: "🍉" },
+  { name: "Lebah", emoji: "🐝" },
+  { name: "Ceri", emoji: "🍒" },
+  { name: "Kado", emoji: "🎁" },
+  { name: "Kupu-Kupu", emoji: "🦋" },
+  { name: "Kapal", emoji: "🚢" },
+  { name: "Anak Ayam", emoji: "🐥" },
 ];
 
 export const VisualMathGame: React.FC<VisualMathGameProps> = ({ onEarnStar }) => {
@@ -27,6 +48,7 @@ export const VisualMathGame: React.FC<VisualMathGameProps> = ({ onEarnStar }) =>
   const [numA, setNumA] = useState(2);
   const [numB, setNumB] = useState(1);
   const [itemTheme, setItemTheme] = useState(MATH_ITEMS[0]);
+  const [questionCount, setQuestionCount] = useState(1);
   const [options, setOptions] = useState<number[]>([]);
   const [isCompleted, setIsCompleted] = useState(false);
   const [selectedWrong, setSelectedWrong] = useState<number | null>(null);
@@ -41,8 +63,12 @@ export const VisualMathGame: React.FC<VisualMathGameProps> = ({ onEarnStar }) =>
     setIsCompleted(false);
     setSelectedWrong(null);
 
-    // Random item theme
-    const theme = MATH_ITEMS[Math.floor(Math.random() * MATH_ITEMS.length)];
+    // Pick random item theme different from current
+    let nextThemeIdx = Math.floor(Math.random() * MATH_ITEMS.length);
+    if (MATH_ITEMS[nextThemeIdx].name === itemTheme.name) {
+      nextThemeIdx = (nextThemeIdx + 1) % MATH_ITEMS.length;
+    }
+    const theme = MATH_ITEMS[nextThemeIdx];
     setItemTheme(theme);
 
     let a = 1;
@@ -54,7 +80,7 @@ export const VisualMathGame: React.FC<VisualMathGameProps> = ({ onEarnStar }) =>
         b = Math.floor(Math.random() * (5 - a)) + 1; // sum <= 5
       } else {
         a = Math.floor(Math.random() * 5) + 1; // 1 to 5
-        b = Math.floor(Math.random() * 5) + 1; // sum <= 10
+        b = Math.floor(Math.random() * (10 - a)) + 1; // sum <= 10
       }
     } else {
       // subtraction: a >= b
@@ -62,8 +88,8 @@ export const VisualMathGame: React.FC<VisualMathGameProps> = ({ onEarnStar }) =>
         a = Math.floor(Math.random() * 4) + 2; // 2 to 5
         b = Math.floor(Math.random() * (a - 1)) + 1; // 1 to a-1 (result > 0)
       } else {
-        a = Math.floor(Math.random() * 6) + 4; // 4 to 10
-        b = Math.floor(Math.random() * (a - 1)) + 1;
+        a = Math.floor(Math.random() * 7) + 3; // 3 to 10
+        b = Math.floor(Math.random() * (a - 1)) + 1; // result > 0
       }
     }
 
@@ -91,6 +117,12 @@ export const VisualMathGame: React.FC<VisualMathGameProps> = ({ onEarnStar }) =>
         speech.speak(`${a} dikurangi ${b}, tersisa berapa?`, 0.9, 1.15);
       }
     }, 300);
+  };
+
+  const handleNextRandom = () => {
+    sounds.playPop();
+    setQuestionCount((c) => c + 1);
+    generateProblem();
   };
 
   const handleSelectAnswer = (ans: number) => {
@@ -189,9 +221,10 @@ export const VisualMathGame: React.FC<VisualMathGameProps> = ({ onEarnStar }) =>
       {/* Main Question Card */}
       <div className="bg-white/95 backdrop-blur rounded-3xl p-6 sm:p-8 shadow-xl border-4 border-indigo-200 text-center relative overflow-hidden">
         <div className="flex justify-between items-center text-xs sm:text-sm font-bold text-slate-500 mb-3">
-          <span>
-            {operation === "add" ? "Gabungkan kedua kelompok benda" : "Hitung benda yang masih utuh"}
-          </span>
+          <div className="flex items-center gap-1.5 bg-indigo-100/70 text-indigo-900 px-3 py-1 rounded-full border border-indigo-200">
+            <Shuffle className="w-3.5 h-3.5 text-indigo-600" />
+            <span>Soal Acak #{questionCount} (Bank: {MATH_ITEMS.length} Tema Benda)</span>
+          </div>
           <span className="text-amber-500 flex items-center gap-1">
             <Star className="w-4 h-4 fill-amber-400" /> +1 Bintang
           </span>
@@ -322,10 +355,10 @@ export const VisualMathGame: React.FC<VisualMathGameProps> = ({ onEarnStar }) =>
               </span>
             </div>
             <button
-              onClick={generateProblem}
+              onClick={handleNextRandom}
               className="w-full py-4 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-black text-lg sm:text-xl rounded-2xl shadow-lg border-2 border-emerald-300 flex items-center justify-center gap-3 active:scale-95 transition-all cursor-pointer"
             >
-              <span>Soal Berikutnya</span>
+              <span>Soal Acak Berikutnya</span>
               <ArrowRight className="w-6 h-6 stroke-[3]" />
             </button>
           </div>
@@ -335,14 +368,11 @@ export const VisualMathGame: React.FC<VisualMathGameProps> = ({ onEarnStar }) =>
       {/* Auxiliary actions */}
       <div className="flex justify-center gap-3">
         <button
-          onClick={() => {
-            sounds.playPop();
-            generateProblem();
-          }}
+          onClick={handleNextRandom}
           className="px-4 py-2.5 bg-white/90 hover:bg-white text-slate-700 font-bold rounded-2xl shadow-sm border border-slate-200 flex items-center gap-2 active:scale-95 transition-all cursor-pointer text-sm"
         >
-          <RotateCcw className="w-4 h-4 text-indigo-500" />
-          <span>Ganti Soal Baru</span>
+          <Shuffle className="w-4 h-4 text-indigo-500" />
+          <span>Ganti Soal Acak</span>
         </button>
       </div>
     </div>

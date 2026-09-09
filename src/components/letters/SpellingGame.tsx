@@ -1,6 +1,6 @@
-﻿import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import confetti from "canvas-confetti";
-import { Sparkles, ArrowRight, RotateCcw, Volume2, Star } from "lucide-react";
+import { Sparkles, ArrowRight, RotateCcw, Volume2, Star, Shuffle } from "lucide-react";
 import { SPELLING_WORDS, SpellingWord } from "../../data/spellingData";
 import { sounds } from "../../utils/audioEffects";
 import { speech } from "../../utils/speechHelper";
@@ -15,8 +15,18 @@ interface LetterTile {
 }
 
 export const SpellingGame: React.FC<SpellingGameProps> = ({ onEarnStar }) => {
-  const [wordIndex, setWordIndex] = useState(0);
-  const currentWord: SpellingWord = SPELLING_WORDS[wordIndex];
+  // Generate initial randomized deck of word indices
+  const initialShuffledDeck = useMemo(() => {
+    return Array.from({ length: SPELLING_WORDS.length }, (_, i) => i)
+      .sort(() => Math.random() - 0.5);
+  }, []);
+
+  const [deck, setDeck] = useState<number[]>(initialShuffledDeck);
+  const [deckIndex, setDeckIndex] = useState(0);
+  const [questionCount, setQuestionCount] = useState(1);
+
+  const currentWordIndex = deck[deckIndex] ?? 0;
+  const currentWord: SpellingWord = SPELLING_WORDS[currentWordIndex] ?? SPELLING_WORDS[0];
 
   // Available letter tiles (scrambled)
   const [availableTiles, setAvailableTiles] = useState<LetterTile[]>([]);
@@ -28,7 +38,7 @@ export const SpellingGame: React.FC<SpellingGameProps> = ({ onEarnStar }) => {
   // Setup current word
   useEffect(() => {
     setupWord(currentWord);
-  }, [wordIndex]);
+  }, [currentWordIndex]);
 
   const setupWord = (wordObj: SpellingWord) => {
     setIsCompleted(false);
@@ -42,7 +52,10 @@ export const SpellingGame: React.FC<SpellingGameProps> = ({ onEarnStar }) => {
     }));
 
     // Scramble tiles (ensure it does not accidentally match target order)
-    const scrambled = [...tiles].sort(() => Math.random() - 0.5);
+    let scrambled = [...tiles].sort(() => Math.random() - 0.5);
+    if (scrambled.map((t) => t.char).join("") === wordObj.word && wordObj.word.length > 2) {
+      scrambled = scrambled.reverse();
+    }
     setAvailableTiles(scrambled);
     setPlacedTiles(new Array(chars.length).fill(null));
 
@@ -118,9 +131,28 @@ export const SpellingGame: React.FC<SpellingGameProps> = ({ onEarnStar }) => {
     }
   };
 
+  // Move to next randomized word in deck
   const handleNextWord = () => {
     sounds.playPop();
-    setWordIndex((prev) => (prev + 1) % SPELLING_WORDS.length);
+    setQuestionCount((c) => c + 1);
+
+    if (deckIndex + 1 >= deck.length) {
+      // Reshuffle deck when exhausted
+      const newDeck = Array.from({ length: SPELLING_WORDS.length }, (_, i) => i)
+        .sort(() => Math.random() - 0.5);
+      setDeck(newDeck);
+      setDeckIndex(0);
+    } else {
+      setDeckIndex((prev) => prev + 1);
+    }
+  };
+
+  // Randomize / skip to another word directly
+  const handleShuffleRandom = () => {
+    sounds.playPop();
+    const randomOffset = Math.floor(Math.random() * (SPELLING_WORDS.length - 1)) + 1;
+    setDeckIndex((prev) => (prev + randomOffset) % deck.length);
+    setQuestionCount((c) => c + 1);
   };
 
   const handleResetWord = () => {
@@ -134,9 +166,12 @@ export const SpellingGame: React.FC<SpellingGameProps> = ({ onEarnStar }) => {
       <div className="bg-white/95 backdrop-blur rounded-3xl p-6 sm:p-8 shadow-xl border-4 border-amber-200 text-center relative overflow-hidden">
         {/* Progress indicator */}
         <div className="flex justify-between items-center text-xs sm:text-sm font-bold text-slate-500 mb-2">
-          <span>Kata {wordIndex + 1} dari {SPELLING_WORDS.length}</span>
+          <div className="flex items-center gap-1.5 bg-amber-100/70 text-amber-900 px-3 py-1 rounded-full border border-amber-200">
+            <Shuffle className="w-3.5 h-3.5 text-amber-600" />
+            <span>Soal Acak #{questionCount} (Bank: {SPELLING_WORDS.length} Kata)</span>
+          </div>
           <span className="text-amber-500 flex items-center gap-1">
-            <Star className="w-4 h-4 fill-amber-400" /> +1 Bintang jika benar
+            <Star className="w-4 h-4 fill-amber-400" /> +1 Bintang
           </span>
         </div>
 
@@ -188,7 +223,7 @@ export const SpellingGame: React.FC<SpellingGameProps> = ({ onEarnStar }) => {
               onClick={handleNextWord}
               className="w-full py-4 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-black text-lg sm:text-xl rounded-2xl shadow-lg border-2 border-emerald-300 flex items-center justify-center gap-3 active:scale-95 transition-all cursor-pointer"
             >
-              <span>Lanjut Kata Berikutnya</span>
+              <span>Lanjut Kata Acak Berikutnya</span>
               <ArrowRight className="w-6 h-6 stroke-[3]" />
             </button>
           </div>
@@ -226,7 +261,7 @@ export const SpellingGame: React.FC<SpellingGameProps> = ({ onEarnStar }) => {
         )}
       </div>
 
-      {/* Auxiliary action: Speak word button */}
+      {/* Auxiliary actions */}
       <div className="flex justify-center gap-3">
         <button
           onClick={() => {
@@ -237,6 +272,13 @@ export const SpellingGame: React.FC<SpellingGameProps> = ({ onEarnStar }) => {
         >
           <Volume2 className="w-4 h-4 text-pink-500" />
           <span>Dengarkan Kata</span>
+        </button>
+        <button
+          onClick={handleShuffleRandom}
+          className="px-4 py-2.5 bg-white/90 hover:bg-white text-slate-700 font-bold rounded-2xl shadow-sm border border-slate-200 flex items-center gap-2 active:scale-95 transition-all cursor-pointer text-sm"
+        >
+          <Shuffle className="w-4 h-4 text-purple-500" />
+          <span>Acak Kata Lain</span>
         </button>
         <button
           onClick={handleResetWord}

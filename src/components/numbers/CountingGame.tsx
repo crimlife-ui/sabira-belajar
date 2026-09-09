@@ -1,6 +1,6 @@
-﻿import React, { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import confetti from "canvas-confetti";
-import { Sparkles, ArrowRight, RotateCcw, Star } from "lucide-react";
+import { Sparkles, ArrowRight, RotateCcw, Star, Shuffle } from "lucide-react";
 import { sounds } from "../../utils/audioEffects";
 import { speech } from "../../utils/speechHelper";
 
@@ -15,39 +15,63 @@ interface CountItem {
 }
 
 const EMOJI_SETS = [
-  { name: "Apel", emoji: "🍎", question: "Ada berapa buah apel di kebun?" },
-  { name: "Bintang", emoji: "⭐", question: "Ada berapa bintang yang bersinar?" },
+  { name: "Apel", emoji: "🍎", question: "Ada berapa buah apel merah di keranjang?" },
+  { name: "Bintang", emoji: "⭐", question: "Ada berapa bintang bersinar di langit?" },
   { name: "Donat", emoji: "🍩", question: "Ada berapa donat lezat di meja?" },
-  { name: "Balon", emoji: "🎈", question: "Ada berapa balon warna-warni?" },
-  { name: "Mobil", emoji: "🚗", question: "Ada berapa mobil yang sedang parkir?" },
-  { name: "Kucing", emoji: "🐱", question: "Ada berapa kucing lucu di sini?" },
-  { name: "Kelinci", emoji: "🐰", question: "Ada berapa kelinci yang melompat?" },
-  { name: "Stroberi", emoji: "🍓", question: "Ada berapa stroberi manis ini?" },
+  { name: "Balon", emoji: "🎈", question: "Ada berapa balon warna-warni terbang?" },
+  { name: "Mobil", emoji: "🚗", question: "Ada berapa mobil parkir di garasi?" },
+  { name: "Kucing", emoji: "🐱", question: "Ada berapa anak kucing yang lucu?" },
+  { name: "Kelinci", emoji: "🐰", question: "Ada berapa kelinci yang sedang melompat?" },
+  { name: "Stroberi", emoji: "🍓", question: "Ada berapa stroberi manis di kebun?" },
+  { name: "Ikan", emoji: "🐟", question: "Ada berapa ikan berenang di akuarium?" },
+  { name: "Permen", emoji: "🍬", question: "Ada berapa permen manis di toples?" },
+  { name: "Es Krim", emoji: "🍦", question: "Ada berapa es krim dingin di meja?" },
+  { name: "Kupu-Kupu", emoji: "🦋", question: "Ada berapa kupu-kupu hinggap di taman?" },
+  { name: "Kura-Kura", emoji: "🐢", question: "Ada berapa kura-kura berjalan santai?" },
+  { name: "Anak Ayam", emoji: "🐥", question: "Ada berapa anak ayam yang mungil?" },
+  { name: "Jamur", emoji: "🍄", question: "Ada berapa jamur tumbuh di rumput?" },
+  { name: "Kue", emoji: "🧁", question: "Ada berapa kue mangkuk yang lezat?" },
+  { name: "Pizza", emoji: "🍕", question: "Ada berapa potong pizza hangat?" },
+  { name: "Bebek", emoji: "🦆", question: "Ada berapa bebek berenang di kolam?" },
+  { name: "Pisang", emoji: "🍌", question: "Ada berapa pisang kuning di meja?" },
+  { name: "Lebah", emoji: "🐝", question: "Ada berapa lebah mengumpulkan madu?" },
+  { name: "Roket", emoji: "🚀", question: "Ada berapa roket meluncur ke angkasa?" },
+  { name: "Semangka", emoji: "🍉", question: "Ada berapa potong semangka segar?" },
+  { name: "Burung", emoji: "🦜", question: "Ada berapa burung bertengger di dahan?" },
+  { name: "Bunga", emoji: "🌸", question: "Ada berapa bunga mekar di taman?" },
+  { name: "Panda", emoji: "🐼", question: "Ada berapa panda lucu makan bambu?" },
+  { name: "Wortel", emoji: "🥕", question: "Ada berapa wortel segar dipanen?" },
+  { name: "Singa", emoji: "🦁", question: "Ada berapa anak singa sedang bermain?" },
+  { name: "Kuda", emoji: "🐴", question: "Ada berapa kuda gagah di padang rumput?" },
 ];
 
 export const CountingGame: React.FC<CountingGameProps> = ({ onEarnStar }) => {
   const [targetCount, setTargetCount] = useState(3);
-  const [currentSetIndex, setCurrentSetIndex] = useState(0);
+  const [currentSetIndex, setCurrentSetIndex] = useState(() =>
+    Math.floor(Math.random() * EMOJI_SETS.length)
+  );
+  const [questionCount, setQuestionCount] = useState(1);
   const [items, setItems] = useState<CountItem[]>([]);
   const [options, setOptions] = useState<number[]>([]);
   const [isCompleted, setIsCompleted] = useState(false);
   const [tappedCount, setTappedCount] = useState(0);
   const [selectedWrongAnswer, setSelectedWrongAnswer] = useState<number | null>(null);
 
-  const currentTheme = EMOJI_SETS[currentSetIndex];
+  const currentTheme = EMOJI_SETS[currentSetIndex] ?? EMOJI_SETS[0];
 
-  // Start new round
   useEffect(() => {
-    generateRound();
+    generateRound(currentSetIndex);
   }, [currentSetIndex]);
 
-  const generateRound = () => {
+  const generateRound = (setIdx: number) => {
     setIsCompleted(false);
     setSelectedWrongAnswer(null);
     setTappedCount(0);
 
-    // Random count between 2 and 9
-    const count = Math.floor(Math.random() * 7) + 2;
+    const theme = EMOJI_SETS[setIdx];
+
+    // Random count between 1 and 9
+    const count = Math.floor(Math.random() * 8) + 2;
     setTargetCount(count);
 
     // Items array
@@ -58,7 +82,7 @@ export const CountingGame: React.FC<CountingGameProps> = ({ onEarnStar }) => {
     }));
     setItems(newItems);
 
-    // Options (including correct count and 2 distractors)
+    // Generate 3 choices (1 correct, 2 distractors)
     const opts = new Set<number>([count]);
     while (opts.size < 3) {
       const delta = (Math.random() > 0.5 ? 1 : -1) * (Math.floor(Math.random() * 2) + 1);
@@ -71,7 +95,7 @@ export const CountingGame: React.FC<CountingGameProps> = ({ onEarnStar }) => {
 
     // Voice prompt
     setTimeout(() => {
-      speech.speak(currentTheme.question, 0.9, 1.15);
+      speech.speak(theme.question, 0.9, 1.15);
     }, 300);
   };
 
@@ -119,9 +143,16 @@ export const CountingGame: React.FC<CountingGameProps> = ({ onEarnStar }) => {
     }
   };
 
-  const handleNext = () => {
+  // Move to next random question
+  const handleNextRandom = () => {
     sounds.playPop();
-    setCurrentSetIndex((prev) => (prev + 1) % EMOJI_SETS.length);
+    setQuestionCount((c) => c + 1);
+    // Pick different random index
+    let nextIdx = Math.floor(Math.random() * EMOJI_SETS.length);
+    if (nextIdx === currentSetIndex) {
+      nextIdx = (nextIdx + 1) % EMOJI_SETS.length;
+    }
+    setCurrentSetIndex(nextIdx);
   };
 
   return (
@@ -129,7 +160,10 @@ export const CountingGame: React.FC<CountingGameProps> = ({ onEarnStar }) => {
       <div className="bg-white/95 backdrop-blur rounded-3xl p-6 sm:p-8 shadow-xl border-4 border-emerald-200 text-center relative overflow-hidden">
         {/* Top Info */}
         <div className="flex justify-between items-center text-xs sm:text-sm font-bold text-slate-500 mb-2">
-          <span>Sentuh setiap gambar untuk berhitung!</span>
+          <div className="flex items-center gap-1.5 bg-emerald-100/70 text-emerald-900 px-3 py-1 rounded-full border border-emerald-200">
+            <Shuffle className="w-3.5 h-3.5 text-emerald-600" />
+            <span>Soal Acak #{questionCount} (Bank: {EMOJI_SETS.length} Tema)</span>
+          </div>
           <span className="text-amber-500 flex items-center gap-1">
             <Star className="w-4 h-4 fill-amber-400" /> +1 Bintang
           </span>
@@ -200,10 +234,10 @@ export const CountingGame: React.FC<CountingGameProps> = ({ onEarnStar }) => {
               <span>Hebat! Ada {targetCount} {currentTheme.name}!</span>
             </div>
             <button
-              onClick={handleNext}
+              onClick={handleNextRandom}
               className="w-full py-4 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-black text-lg sm:text-xl rounded-2xl shadow-lg border-2 border-emerald-300 flex items-center justify-center gap-3 active:scale-95 transition-all cursor-pointer"
             >
-              <span>Soal Berikutnya</span>
+              <span>Soal Acak Berikutnya</span>
               <ArrowRight className="w-6 h-6 stroke-[3]" />
             </button>
           </div>
@@ -213,14 +247,21 @@ export const CountingGame: React.FC<CountingGameProps> = ({ onEarnStar }) => {
       {/* Auxiliary actions */}
       <div className="flex justify-center gap-3">
         <button
+          onClick={handleNextRandom}
+          className="px-4 py-2.5 bg-white/90 hover:bg-white text-slate-700 font-bold rounded-2xl shadow-sm border border-slate-200 flex items-center gap-2 active:scale-95 transition-all cursor-pointer text-sm"
+        >
+          <Shuffle className="w-4 h-4 text-emerald-500" />
+          <span>Ganti Soal Acak</span>
+        </button>
+        <button
           onClick={() => {
             sounds.playPop();
-            generateRound();
+            generateRound(currentSetIndex);
           }}
           className="px-4 py-2.5 bg-white/90 hover:bg-white text-slate-700 font-bold rounded-2xl shadow-sm border border-slate-200 flex items-center gap-2 active:scale-95 transition-all cursor-pointer text-sm"
         >
-          <RotateCcw className="w-4 h-4 text-emerald-500" />
-          <span>Ganti Soal</span>
+          <RotateCcw className="w-4 h-4 text-slate-500" />
+          <span>Hitung Ulang</span>
         </button>
       </div>
     </div>
