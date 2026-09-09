@@ -1,4 +1,4 @@
-﻿import React, { useState } from "react";
+import React, { useState } from "react";
 import { Volume2, Sparkles, ChevronLeft, ChevronRight } from "lucide-react";
 import { ALPHABET_LIST, AlphabetItem } from "../../data/alphabetData";
 import { sounds } from "../../utils/audioEffects";
@@ -51,11 +51,11 @@ export const LetterExplorer: React.FC = () => {
         </button>
 
         {/* Big Letter Display */}
-        <div className="flex items-baseline justify-center gap-3">
+        <div className="flex items-baseline justify-center gap-3 sm:gap-4">
           <span className={`text-7xl sm:text-9xl font-black ${selectedLetter.color} tracking-tight drop-shadow-sm`}>
             {selectedLetter.letter}
           </span>
-          <span className="text-4xl sm:text-6xl font-bold text-slate-400">
+          <span className="text-6xl sm:text-8xl font-extrabold text-slate-400">
             {selectedLetter.letter.toLowerCase()}
           </span>
         </div>
