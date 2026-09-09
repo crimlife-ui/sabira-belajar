@@ -1,7 +1,7 @@
-﻿import React, { useState, useEffect } from "react";
-import { X, Check, RotateCcw, Volume2, ShieldAlert } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { X, Check, RotateCcw, Volume2, ShieldAlert, Mic, Sparkles } from "lucide-react";
 import { sounds } from "../../utils/audioEffects";
-import { speech } from "../../utils/speechHelper";
+import { speech, VOICE_PERSONAS, VoicePersona } from "../../utils/speechHelper";
 
 interface ParentalModalProps {
   isOpen: boolean;
@@ -24,7 +24,12 @@ export const ParentalModal: React.FC<ParentalModalProps> = ({
   const [isUnlocked, setIsUnlocked] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
 
-  // Generate a random math question whenever modal opens
+  // Narrator voice settings
+  const [currentPersonaId, setCurrentPersonaId] = useState(() => speech.getPersonaId());
+  const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([]);
+  const [selectedVoiceURI, setSelectedVoiceURI] = useState<string>(() => speech.getSelectedVoiceURI() || "");
+
+  // Generate a random math question whenever modal opens & load voices
   useEffect(() => {
     if (isOpen) {
       const a = Math.floor(Math.random() * 6) + 3; // 3 to 8
@@ -34,6 +39,12 @@ export const ParentalModal: React.FC<ParentalModalProps> = ({
       setUserAnswer("");
       setIsUnlocked(false);
       setErrorMessage("");
+
+      // Refresh voices
+      const voices = speech.getAvailableVoices();
+      setAvailableVoices(voices);
+      setSelectedVoiceURI(speech.getSelectedVoiceURI() || "");
+      setCurrentPersonaId(speech.getPersonaId());
     }
   }, [isOpen]);
 
@@ -52,6 +63,20 @@ export const ParentalModal: React.FC<ParentalModalProps> = ({
     }
   };
 
+  const handleSelectPersona = (p: VoicePersona) => {
+    sounds.playPop();
+    setCurrentPersonaId(p.id);
+    speech.setPersona(p.id);
+    speech.testVoice(p);
+  };
+
+  const handleSelectSystemVoice = (uri: string) => {
+    sounds.playPop();
+    setSelectedVoiceURI(uri);
+    speech.setSelectedVoiceURI(uri);
+    speech.testVoice();
+  };
+
   const handleReset = () => {
     if (window.confirm("Apakah Ayah/Bunda yakin ingin mereset bintang dan koleksi stiker?")) {
       onResetProgress();
@@ -62,7 +87,7 @@ export const ParentalModal: React.FC<ParentalModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fadeIn">
-      <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border-4 border-indigo-100 relative">
+      <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl border-4 border-indigo-100 relative max-h-[90vh] overflow-y-auto">
         {/* Close Button */}
         <button
           onClick={() => {
@@ -119,7 +144,7 @@ export const ParentalModal: React.FC<ParentalModalProps> = ({
           /* Settings Menu */
           <div className="space-y-5 pt-2">
             <h2 className="text-xl font-black text-slate-800 text-center border-b pb-3">
-              Pengaturan Aplikasi
+              Pengaturan Aplikasi & Orang Tua
             </h2>
 
             {/* Sound Toggle */}
@@ -146,21 +171,76 @@ export const ParentalModal: React.FC<ParentalModalProps> = ({
               </button>
             </div>
 
-            {/* Voice Test */}
-            <div className="flex items-center justify-between p-3 bg-slate-50 rounded-2xl border border-slate-200">
-              <div>
-                <p className="font-bold text-slate-800 text-sm">Tes Suara Narasi</p>
-                <p className="text-xs text-slate-500">Uji pelafalan bahasa Indonesia</p>
+            {/* NEW SECTION: Voice Narrator Persona Selection */}
+            <div className="space-y-3 p-4 bg-indigo-50/70 rounded-2xl border-2 border-indigo-200">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-indigo-900 font-black text-sm">
+                  <Mic className="w-4 h-4 text-indigo-600" />
+                  <span>Karakter Suara Narator:</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => speech.testVoice()}
+                  className="px-3 py-1 bg-white hover:bg-indigo-100 text-indigo-700 border border-indigo-300 rounded-xl text-xs font-black flex items-center gap-1 shadow-sm cursor-pointer"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-yellow-500 fill-yellow-400" />
+                  <span>Uji Suara</span>
+                </button>
               </div>
-              <button
-                onClick={() => {
-                  speech.speak("Halo Sabira! Selamat belajar huruf dan angka ya!", 1.0, 1.1);
-                  sounds.playPop();
-                }}
-                className="px-3.5 py-1.5 bg-indigo-100 hover:bg-indigo-200 text-indigo-700 font-bold rounded-xl text-xs transition-all cursor-pointer"
-              >
-                Uji Suara 🔊
-              </button>
+
+              {/* 4 Persona Cards */}
+              <div className="grid grid-cols-2 gap-2 sm:gap-2.5">
+                {VOICE_PERSONAS.map((p) => {
+                  const isSelected = currentPersonaId === p.id;
+                  return (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => handleSelectPersona(p)}
+                      className={`p-3 rounded-2xl text-left transition-all border-2 cursor-pointer relative ${
+                        isSelected
+                          ? "bg-white border-indigo-500 shadow-md ring-2 ring-indigo-300 scale-102"
+                          : "bg-white/70 hover:bg-white border-slate-200"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-2xl">{p.emoji}</span>
+                        {isSelected && (
+                          <span className="w-5 h-5 bg-indigo-600 text-white rounded-full flex items-center justify-center text-xs">
+                            ✓
+                          </span>
+                        )}
+                      </div>
+                      <p className="font-black text-xs sm:text-sm text-slate-800 mt-1">
+                        {p.name}
+                      </p>
+                      <p className="text-[10px] sm:text-xs text-slate-500 line-clamp-1">
+                        {p.desc}
+                      </p>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Browser System Voice Selector (if device supports multiple voices) */}
+              {availableVoices.length > 0 && (
+                <div className="space-y-1 pt-1">
+                  <label className="block text-[11px] font-bold text-slate-600">
+                    Pilihan Mesin Suara Perangkat (Browser Voice):
+                  </label>
+                  <select
+                    value={selectedVoiceURI}
+                    onChange={(e) => handleSelectSystemVoice(e.target.value)}
+                    className="w-full bg-white text-xs font-bold py-2 px-3 rounded-xl border border-indigo-200 text-slate-700 focus:outline-none focus:border-indigo-500 cursor-pointer"
+                  >
+                    {availableVoices.map((v) => (
+                      <option key={v.voiceURI} value={v.voiceURI}>
+                        {v.name} ({v.lang})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
             </div>
 
             {/* Reset Progress */}
