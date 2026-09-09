@@ -1,10 +1,11 @@
-﻿import React, { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import confetti from "canvas-confetti";
 import { Sparkles, Star, BookOpen, Hash, Calculator, Award } from "lucide-react";
 import { TopBar } from "./components/common/TopBar";
 import { ParentalModal } from "./components/common/ParentalModal";
 import { LetterExplorer } from "./components/letters/LetterExplorer";
 import { SpellingGame } from "./components/letters/SpellingGame";
+import { SyllableSpellingGame } from "./components/letters/SyllableSpellingGame";
 import { NumberExplorer } from "./components/numbers/NumberExplorer";
 import { CountingGame } from "./components/numbers/CountingGame";
 import { VisualMathGame } from "./components/math/VisualMathGame";
@@ -14,10 +15,11 @@ import { speech } from "./utils/speechHelper";
 import { STICKERS_LIST } from "./data/stickersData";
 
 type Screen = "home" | "letters" | "numbers" | "math";
+type LetterMode = "explore" | "spelling" | "syllables";
 
 export const App: React.FC = () => {
   const [currentScreen, setCurrentScreen] = useState<Screen>("home");
-  const [letterTab, setLetterTab] = useState<"explore" | "spelling">("explore");
+  const [letterTab, setLetterTab] = useState<LetterMode>("explore");
   const [numberTab, setNumberTab] = useState<"explore" | "counting">("explore");
 
   const [stars, setStars] = useState<number>(() => {
@@ -78,7 +80,11 @@ export const App: React.FC = () => {
   const getScreenTitle = () => {
     switch (currentScreen) {
       case "letters":
-        return letterTab === "explore" ? "🔤 Mengenal Huruf A-Z" : "🔤 Belajar Mengeja Kata";
+        return letterTab === "explore"
+          ? "🔤 Mengenal Huruf A-Z"
+          : letterTab === "spelling"
+          ? "🔤 Eja Huruf Kata"
+          : "🗣️ Eja Suku Kata";
       case "numbers":
         return numberTab === "explore" ? "🔢 Mengenal Angka 0-20" : "🔢 Menghitung Benda";
       case "math":
@@ -117,7 +123,7 @@ export const App: React.FC = () => {
                   Halo Sabira! Ayo Belajar & Bermain!
                 </h2>
                 <p className="text-white/90 text-sm sm:text-base font-medium max-w-lg">
-                  Pilih petualanganmu hari ini: mengenal huruf, mengeja kata, berhitung angka, atau matematika seru!
+                  Pilih petualanganmu hari ini: mengenal huruf, mengeja suku kata, berhitung angka, atau matematika seru!
                 </p>
               </div>
 
@@ -159,7 +165,7 @@ export const App: React.FC = () => {
                     <span>Huruf & Mengeja</span>
                   </h3>
                   <p className="text-white/85 text-sm font-medium mt-1">
-                    Kenali 26 alfabet A-Z dan susun kata bergambar ceria.
+                    Alfabet A-Z, Eja Huruf, dan Eja Suku Kata interaktif (A - YA - M).
                   </p>
                 </div>
               </button>
@@ -255,41 +261,56 @@ export const App: React.FC = () => {
         {/* ===================== SCREEN: LETTERS ===================== */}
         {currentScreen === "letters" && (
           <div className="space-y-4">
-            {/* Sub Tabs */}
-            <div className="flex justify-center gap-2 max-w-md mx-auto p-1.5 bg-white/80 backdrop-blur rounded-2xl border border-pink-200 shadow-sm">
+            {/* Sub Tabs: 3 Pilihan Menu */}
+            <div className="flex flex-wrap justify-center gap-2 max-w-xl mx-auto p-1.5 bg-white/80 backdrop-blur rounded-2xl border border-pink-200 shadow-sm">
               <button
                 onClick={() => {
                   sounds.playPop();
                   setLetterTab("explore");
                 }}
-                className={`flex-1 py-2.5 rounded-xl font-black text-sm sm:text-base transition-all cursor-pointer ${
+                className={`flex-1 min-w-[7.5rem] py-2.5 px-2 rounded-xl font-black text-xs sm:text-sm transition-all cursor-pointer ${
                   letterTab === "explore"
                     ? "bg-gradient-to-r from-pink-500 to-rose-500 text-white shadow-md scale-102"
                     : "text-slate-600 hover:bg-pink-50"
                 }`}
               >
-                Mengenal Huruf A-Z
+                Mengenal A-Z
               </button>
               <button
                 onClick={() => {
                   sounds.playPop();
                   setLetterTab("spelling");
                 }}
-                className={`flex-1 py-2.5 rounded-xl font-black text-sm sm:text-base transition-all cursor-pointer ${
+                className={`flex-1 min-w-[7.5rem] py-2.5 px-2 rounded-xl font-black text-xs sm:text-sm transition-all cursor-pointer ${
                   letterTab === "spelling"
                     ? "bg-gradient-to-r from-pink-500 to-rose-500 text-white shadow-md scale-102"
                     : "text-slate-600 hover:bg-pink-50"
                 }`}
               >
-                Tebak & Eja Kata 🧩
+                Eja Huruf 🧩
+              </button>
+              <button
+                onClick={() => {
+                  sounds.playPop();
+                  setLetterTab("syllables");
+                }}
+                className={`flex-1 min-w-[7.5rem] py-2.5 px-2 rounded-xl font-black text-xs sm:text-sm transition-all cursor-pointer ${
+                  letterTab === "syllables"
+                    ? "bg-gradient-to-r from-pink-500 to-rose-500 text-white shadow-md scale-102"
+                    : "text-slate-600 hover:bg-pink-50"
+                }`}
+              >
+                Eja Suku Kata 🗣️
               </button>
             </div>
 
             {/* Active Sub Mode */}
             {letterTab === "explore" ? (
               <LetterExplorer />
-            ) : (
+            ) : letterTab === "spelling" ? (
               <SpellingGame onEarnStar={handleEarnStar} />
+            ) : (
+              <SyllableSpellingGame onEarnStar={handleEarnStar} />
             )}
           </div>
         )}
