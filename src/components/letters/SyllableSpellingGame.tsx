@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import confetti from "canvas-confetti";
 import { Sparkles, ArrowRight, RotateCcw, Volume2, Star, Shuffle, AlertCircle, CheckCircle2 } from "lucide-react";
 import { SPELLING_WORDS, SpellingWord } from "../../data/spellingData";
@@ -11,7 +11,83 @@ interface SyllableSpellingGameProps {
   onBackToHome?: () => void;
 }
 
+interface BalloonChoice {
+  id: string;
+  char: string;
+  color: {
+    bg: string;
+    shadow: string;
+    border: string;
+    highlight: string;
+    stringColor: string;
+  };
+  delaySec: number;
+  bobDurationSec: number;
+  isPopping?: boolean;
+}
+
+interface FlyingLetter {
+  id: string;
+  char: string;
+  startX: number;
+  startY: number;
+  targetX: number;
+  targetY: number;
+}
+
 const SESSION_SIZE = 10;
+
+const BALLOON_COLOR_PALETTES = [
+  {
+    bg: "from-rose-400 via-rose-500 to-red-500",
+    shadow: "shadow-rose-300",
+    border: "border-rose-300",
+    highlight: "bg-white/40",
+    stringColor: "text-rose-400",
+  },
+  {
+    bg: "from-sky-400 via-sky-500 to-blue-500",
+    shadow: "shadow-sky-300",
+    border: "border-sky-300",
+    highlight: "bg-white/40",
+    stringColor: "text-sky-400",
+  },
+  {
+    bg: "from-amber-300 via-amber-400 to-yellow-500",
+    shadow: "shadow-amber-300",
+    border: "border-amber-200",
+    highlight: "bg-white/50",
+    stringColor: "text-amber-400",
+  },
+  {
+    bg: "from-emerald-400 via-emerald-500 to-teal-500",
+    shadow: "shadow-emerald-300",
+    border: "border-emerald-300",
+    highlight: "bg-white/40",
+    stringColor: "text-emerald-400",
+  },
+  {
+    bg: "from-purple-400 via-purple-500 to-indigo-500",
+    shadow: "shadow-purple-300",
+    border: "border-purple-300",
+    highlight: "bg-white/40",
+    stringColor: "text-purple-400",
+  },
+  {
+    bg: "from-pink-400 via-pink-500 to-rose-400",
+    shadow: "shadow-pink-300",
+    border: "border-pink-300",
+    highlight: "bg-white/40",
+    stringColor: "text-pink-400",
+  },
+  {
+    bg: "from-orange-400 via-orange-500 to-amber-500",
+    shadow: "shadow-orange-300",
+    border: "border-orange-300",
+    highlight: "bg-white/40",
+    stringColor: "text-orange-400",
+  },
+];
 
 // Helper to pick N distinct random indices from array
 const getRandomIndices = (total: number, count: number): number[] => {
@@ -42,21 +118,31 @@ export const SyllableSpellingGame: React.FC<SyllableSpellingGameProps> = ({ onEa
 
   // Feedback states
   const [correctionMsg, setCorrectionMsg] = useState<string | null>(null);
-  const [wrongLetter, setWrongLetter] = useState<string | null>(null);
+  const [wrongBalloonId, setWrongBalloonId] = useState<string | null>(null);
   const [partSuccessBanner, setPartSuccessBanner] = useState<string | null>(null);
   const [isWordCompleted, setIsWordCompleted] = useState(false);
 
-  // Available letter choices to display (scrambled letters of word + distractors)
-  const [choices, setChoices] = useState<string[]>([]);
+  // Available balloon choices to display
+  const [balloons, setBalloons] = useState<BalloonChoice[]>([]);
+
+  // Flying letter overlay
+  const [flyingLetter, setFlyingLetter] = useState<FlyingLetter | null>(null);
+  const [flyingProgress, setFlyingProgress] = useState(0);
+
+  // Refs for element positions
+  const slotRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+  const balloonRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
 
   const setupWord = useCallback((wordObj: SpellingWord) => {
     setActivePartIndex(0);
     setActiveLetterIndex(0);
     setPlacedLetters(wordObj.parts.map(() => []));
     setCorrectionMsg(null);
-    setWrongLetter(null);
+    setWrongBalloonId(null);
     setPartSuccessBanner(null);
     setIsWordCompleted(false);
+    setFlyingLetter(null);
+    setFlyingProgress(0);
 
     // Collect all unique letters from word
     const wordChars = Array.from(new Set(wordObj.word.split("")));
@@ -68,14 +154,25 @@ export const SyllableSpellingGame: React.FC<SyllableSpellingGameProps> = ({ onEa
       .slice(0, 2);
 
     const allChoices = [...wordChars, ...distractors].sort(() => Math.random() - 0.5);
-    setChoices(allChoices);
+    const newBalloons: BalloonChoice[] = allChoices.map((char, index) => {
+      const palette = BALLOON_COLOR_PALETTES[index % BALLOON_COLOR_PALETTES.length];
+      return {
+        id: `balloon-syllable-${char}-${index}-${Math.random()}`,
+        char,
+        color: palette,
+        delaySec: (index * 0.22) % 1.4,
+        bobDurationSec: 2.8 + (index % 3) * 0.4,
+      };
+    });
+
+    setBalloons(newBalloons);
 
     const firstPart = wordObj.parts[0];
     const firstLetter = firstPart.letters[0];
 
     setTimeout(() => {
       speech.speak(
-        `Ayo eja kata ${wordObj.word}. Suku kata pertama: ${firstPart.syllable}. Mulai dari huruf ${firstLetter}!`,
+        `Ayo eja kata ${wordObj.word}. Suku kata pertama: ${firstPart.syllable}. Cari balon huruf ${firstLetter}!`,
         0.9,
         1.15
       );
@@ -98,90 +195,150 @@ export const SyllableSpellingGame: React.FC<SyllableSpellingGameProps> = ({ onEa
   const currentPart = parts[activePartIndex];
   const expectedLetter = currentPart ? currentPart.letters[activeLetterIndex] : "";
 
-  // When child taps a letter button
-  const handleSelectLetter = (letter: string) => {
-    if (isWordCompleted || partSuccessBanner) return;
+  // When child taps a balloon
+  const handleSelectBalloon = (balloon: BalloonChoice) => {
+    if (isWordCompleted || partSuccessBanner || flyingLetter) return;
 
-    sounds.playPop();
-
-    if (letter === expectedLetter) {
-      // CORRECT LETTER!
+    if (balloon.char === expectedLetter) {
+      // CORRECT BALLOON!
+      sounds.playBalloonPop();
+      speech.speak(balloon.char, 1.1, 1.3);
       setCorrectionMsg(null);
-      setWrongLetter(null);
+      setWrongBalloonId(null);
 
-      // Play letter sound
-      speech.speak(letter, 1.1, 1.3);
-
-      // Add letter to placed letters of active syllable
-      const newPlaced = placedLetters.map((arr, idx) =>
-        idx === activePartIndex ? [...arr, letter] : arr
+      // Start pop animation
+      setBalloons((prev) =>
+        prev.map((b) => (b.id === balloon.id ? { ...b, isPopping: true } : b))
       );
-      setPlacedLetters(newPlaced);
 
-      const nextLetterIdx = activeLetterIndex + 1;
+      const balloonEl = balloonRefs.current.get(balloon.id);
+      const slotKey = `${activePartIndex}-${activeLetterIndex}`;
+      const targetSlotEl = slotRefs.current.get(slotKey);
 
-      // Check if current syllable part is completed
-      if (nextLetterIdx >= currentPart.letters.length) {
-        // Current syllable completed! E.g. PEN is done!
-        sounds.playCorrectChime();
+      if (balloonEl && targetSlotEl) {
+        const bRect = balloonEl.getBoundingClientRect();
+        const tRect = targetSlotEl.getBoundingClientRect();
 
-        const spelledLetters = currentPart.letters.join("-");
-        const successText = `${spelledLetters} dibaca ${currentPart.syllable}!`;
-        setPartSuccessBanner(successText);
+        const startX = bRect.left + bRect.width / 2;
+        const startY = bRect.top + bRect.height / 2;
+        const targetX = tRect.left + tRect.width / 2;
+        const targetY = tRect.top + tRect.height / 2;
 
-        const nextPartIdx = activePartIndex + 1;
+        const newFly: FlyingLetter = {
+          id: `fly-${balloon.id}`,
+          char: balloon.char,
+          startX,
+          startY,
+          targetX,
+          targetY,
+        };
 
-        if (nextPartIdx >= parts.length) {
-          // WHOLE WORD COMPLETED!
-          setIsWordCompleted(true);
-          sounds.playFanfare();
-          onEarnStar();
+        sounds.playWhoosh();
+        setFlyingLetter(newFly);
+        setFlyingProgress(0);
 
-          confetti({
-            particleCount: 70,
-            spread: 80,
-            origin: { y: 0.6 },
-          });
+        requestAnimationFrame(() => {
+          setFlyingProgress(1);
+        });
 
-          // Pronounce full word breakdown
-          const fullPhonics = parts
-            .map((p) => `${p.letters.join("-")}: ${p.syllable}`)
-            .join(", ");
+        setTimeout(() => {
+          sounds.playPop();
 
-          setTimeout(() => {
-            speech.speak(
-              `Luar biasa! ${fullPhonics}... dibaca ${currentWord.word}! Pintar sekali!`,
-              0.85,
-              1.15
-            );
-          }, 450);
-        } else {
-          // Move to next syllable
-          const nextPart = parts[nextPartIdx];
-          setTimeout(() => {
-            speech.speak(
-              `Hebat! ${currentPart.syllable}! Sekarang lanjut suku kata kedua: ${nextPart.syllable}! Mulai dari huruf ${nextPart.letters[0]}!`,
-              0.9,
-              1.15
-            );
-          }, 300);
+          // Add letter to placed letters of active syllable
+          const newPlaced = placedLetters.map((arr, idx) =>
+            idx === activePartIndex ? [...arr, balloon.char] : arr
+          );
+          setPlacedLetters(newPlaced);
 
-          setTimeout(() => {
+          const nextLetterIdx = activeLetterIndex + 1;
+
+          if (nextLetterIdx >= currentPart.letters.length) {
+            // Current syllable completed! E.g. PEN is done!
+            sounds.playCorrectChime();
+
+            const spelledLetters = currentPart.letters.join("-");
+            const successText = `${spelledLetters} dibaca ${currentPart.syllable}!`;
+            setPartSuccessBanner(successText);
+
+            const nextPartIdx = activePartIndex + 1;
+
+            if (nextPartIdx >= parts.length) {
+              // WHOLE WORD COMPLETED!
+              setIsWordCompleted(true);
+              sounds.playFanfare();
+              onEarnStar();
+
+              confetti({
+                particleCount: 70,
+                spread: 80,
+                origin: { y: 0.6 },
+              });
+
+              const fullPhonics = parts
+                .map((p) => `${p.letters.join("-")}: ${p.syllable}`)
+                .join(", ");
+
+              setTimeout(() => {
+                speech.speak(
+                  `Luar biasa! ${fullPhonics}... dibaca ${currentWord.word}! Pintar sekali!`,
+                  0.85,
+                  1.15
+                );
+              }, 450);
+            } else {
+              // Move to next syllable
+              const nextPart = parts[nextPartIdx];
+              setTimeout(() => {
+                speech.speak(
+                  `Hebat! ${currentPart.syllable}! Sekarang lanjut suku kata kedua: ${nextPart.syllable}! Cari balon huruf ${nextPart.letters[0]}!`,
+                  0.9,
+                  1.15
+                );
+              }, 300);
+
+              setTimeout(() => {
+                setActivePartIndex(nextPartIdx);
+                setActiveLetterIndex(0);
+                setPartSuccessBanner(null);
+              }, 1800);
+            }
+          } else {
+            // More letters left in current syllable
+            setActiveLetterIndex(nextLetterIdx);
+            const nextExp = currentPart.letters[nextLetterIdx];
+            speech.speak(`Pintar! Lanjut cari balon huruf ${nextExp}!`, 1.0, 1.2);
+          }
+
+          // Un-pop balloon for reuse if needed, or recreate choices
+          setBalloons((prev) =>
+            prev.map((b) => (b.id === balloon.id ? { ...b, isPopping: false } : b))
+          );
+          setFlyingLetter(null);
+          setFlyingProgress(0);
+        }, 480);
+      } else {
+        // Fallback without coordinates
+        const newPlaced = placedLetters.map((arr, idx) =>
+          idx === activePartIndex ? [...arr, balloon.char] : arr
+        );
+        setPlacedLetters(newPlaced);
+        const nextLetterIdx = activeLetterIndex + 1;
+        if (nextLetterIdx >= currentPart.letters.length) {
+          const nextPartIdx = activePartIndex + 1;
+          if (nextPartIdx >= parts.length) {
+            setIsWordCompleted(true);
+          } else {
             setActivePartIndex(nextPartIdx);
             setActiveLetterIndex(0);
-            setPartSuccessBanner(null);
-          }, 1800);
+          }
+        } else {
+          setActiveLetterIndex(nextLetterIdx);
         }
-      } else {
-        // More letters left in current syllable
-        setActiveLetterIndex(nextLetterIdx);
-        const nextExp = currentPart.letters[nextLetterIdx];
-        speech.speak(`Pintar! Lanjut huruf ${nextExp}!`, 1.0, 1.2);
       }
     } else {
-      // WRONG LETTER -> REAL-TIME CORRECTION!
+      // WRONG BALLOON
       sounds.playGentleBoing();
-      setWrongLetter(letter);
+      setWrongBalloonId(balloon.id);
 
       const stepName =
         activeLetterIndex === 0
@@ -192,18 +349,18 @@ export const SyllableSpellingGame: React.FC<SyllableSpellingGameProps> = ({ onEa
           ? "ketiga"
           : `ke-${activeLetterIndex + 1}`;
 
-      const msg = `Bukan huruf '${letter}'. Huruf ${stepName} untuk suku kata '${currentPart.syllable}' adalah '${expectedLetter}'. Yuk cari huruf '${expectedLetter}'!`;
+      const msg = `Bukan balon '${balloon.char}'. Huruf ${stepName} untuk suku kata '${currentPart.syllable}' adalah '${expectedLetter}'. Yuk cari balon '${expectedLetter}'!`;
       setCorrectionMsg(msg);
 
       speech.speak(
-        `Bukan ${letter}. Hurufnya adalah ${expectedLetter}. Coba cari ${expectedLetter} ya!`,
+        `Bukan ${balloon.char}. Hurufnya adalah ${expectedLetter}. Coba cari balon ${expectedLetter} ya!`,
         0.9,
         1.1
       );
 
       setTimeout(() => {
-        setWrongLetter(null);
-      }, 600);
+        setWrongBalloonId(null);
+      }, 650);
     }
   };
 
@@ -305,10 +462,15 @@ export const SyllableSpellingGame: React.FC<SyllableSpellingGameProps> = ({ onEa
                   {part.letters.map((_, lIdx) => {
                     const isLetterPlaced = lIdx < placedInThisPart.length;
                     const isWaitingThisLetter = isCurrentPart && lIdx === activeLetterIndex;
+                    const slotKey = `${pIdx}-${lIdx}`;
 
                     return (
                       <div
                         key={lIdx}
+                        ref={(el) => {
+                          if (el) slotRefs.current.set(slotKey, el);
+                          else slotRefs.current.delete(slotKey);
+                        }}
                         className={`w-12 h-14 sm:w-14 sm:h-16 rounded-2xl flex items-center justify-center font-black text-2xl sm:text-3xl transition-all border-3 ${
                           isLetterPlaced
                             ? "bg-emerald-500 text-white border-emerald-300 shadow-md scale-105"
@@ -358,41 +520,108 @@ export const SyllableSpellingGame: React.FC<SyllableSpellingGameProps> = ({ onEa
               onClick={handleNextQuestion}
               className="w-full py-4 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-black text-lg sm:text-xl rounded-2xl shadow-lg border-2 border-emerald-300 flex items-center justify-center gap-3 active:scale-95 transition-all cursor-pointer"
             >
-              <span>{sessionStep + 1 >= SESSION_SIZE ? "Lihat Hasil Sesi 10 Soal 🎉" : "Lanjut Soal Berikutnya"}</span>
+              <span>{sessionStep + 1 >= SESSION_SIZE ? "Lihat Hasil Sesi 10 Soal 🎉" : "Lanjut Soal Berikutnya 🎈"}</span>
               <ArrowRight className="w-6 h-6 stroke-[3]" />
             </button>
           </div>
         ) : (
-          /* Letter Choice Buttons */
-          <div className="space-y-3">
-            <p className="text-xs sm:text-sm font-bold text-slate-600">
-              Pilih huruf untuk suku kata <span className="text-rose-600 font-black">{currentPart.syllable}</span>:
-            </p>
-            <div className="flex flex-wrap justify-center gap-2 sm:gap-3 min-h-[4.5rem]">
-              {choices.map((char, cIdx) => {
-                const isWrong = wrongLetter === char;
-                const isHintTarget = correctionMsg !== null && char === expectedLetter;
+          /* FLOATING BALLOON CHOICES */
+          <div className="space-y-2 mt-2">
+            <div className="flex items-center justify-center gap-2 text-xs sm:text-sm font-bold text-slate-600 mb-1">
+              <span>🎈 Sentuh balon huruf untuk suku kata:</span>
+              <span className="px-2.5 py-0.5 bg-rose-500 text-white rounded-full font-black text-sm">
+                {currentPart.syllable}
+              </span>
+            </div>
+
+            {/* Floating Balloons */}
+            <div className="flex flex-wrap justify-center items-end gap-3 sm:gap-5 min-h-[9.5rem] pt-3 pb-2 px-2">
+              {balloons.map((balloon) => {
+                const isShaking = wrongBalloonId === balloon.id;
+                const isPopping = balloon.isPopping;
 
                 return (
-                  <button
-                    key={`${char}-${cIdx}`}
-                    onClick={() => handleSelectLetter(char)}
-                    className={`w-14 h-16 sm:w-16 sm:h-18 rounded-2xl font-black text-2xl sm:text-3xl border-3 transition-all cursor-pointer shadow-md flex items-center justify-center active:scale-90 ${
-                      isWrong
-                        ? "bg-rose-200 text-rose-800 border-rose-400 animate-shake"
-                        : isHintTarget
-                        ? "bg-amber-100 text-amber-900 border-amber-400 ring-4 ring-amber-300 animate-bounce"
-                        : "bg-white hover:bg-rose-50 text-indigo-800 border-indigo-200 hover:border-indigo-400"
-                    }`}
+                  <div
+                    key={balloon.id}
+                    className="flex flex-col items-center select-none"
+                    style={{
+                      animation: isPopping ? "none" : `balloon-bob ${balloon.bobDurationSec}s ease-in-out infinite`,
+                      animationDelay: `${balloon.delaySec}s`,
+                    }}
                   >
-                    {char}
-                  </button>
+                    <button
+                      ref={(el) => {
+                        if (el) balloonRefs.current.set(balloon.id, el);
+                        else balloonRefs.current.delete(balloon.id);
+                      }}
+                      onClick={() => handleSelectBalloon(balloon)}
+                      className={`relative w-14 h-18 sm:w-16 sm:h-21 rounded-[50%_50%_50%_50%/60%_60%_40%_40%] bg-gradient-to-br ${
+                        balloon.color.bg
+                      } ${balloon.color.shadow} border-2 ${
+                        balloon.color.border
+                      } shadow-lg flex items-center justify-center font-black text-3xl sm:text-4xl text-white cursor-pointer transition-transform active:scale-90 hover:scale-105 ${
+                        isShaking ? "animate-shake ring-4 ring-rose-400" : ""
+                      } ${isPopping ? "animate-balloon-pop pointer-events-none" : ""}`}
+                      title={`Balon ${balloon.char}`}
+                    >
+                      {/* Glossy 3D Highlight */}
+                      <span
+                        className={`absolute top-2 left-2.5 w-3 h-3.5 sm:w-3.5 sm:h-4 rounded-full ${balloon.color.highlight} -rotate-45 pointer-events-none`}
+                      />
+
+                      {/* Letter on Balloon */}
+                      <span className="drop-shadow-[0_2px_4px_rgba(0,0,0,0.3)] z-10">
+                        {balloon.char}
+                      </span>
+
+                      {/* Balloon Knot */}
+                      <span
+                        className={`absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-3 h-2 sm:w-3.5 sm:h-2.5 bg-inherit rounded-b-md`}
+                      />
+                    </button>
+
+                    {/* Balloon String / Ribbon */}
+                    <svg
+                      className={`w-3 h-6 sm:h-7 ${balloon.color.stringColor} stroke-current fill-none stroke-[2] pointer-events-none -mt-0.5 ${
+                        isPopping ? "opacity-0" : "opacity-80"
+                      }`}
+                      viewBox="0 0 12 28"
+                    >
+                      <path d="M 6 0 Q 2 7, 6 14 T 6 28" />
+                    </svg>
+                  </div>
                 );
               })}
             </div>
           </div>
         )}
       </div>
+
+      {/* FLYING LETTER OVERLAY ANIMATION */}
+      {flyingLetter && (
+        <div
+          className="fixed pointer-events-none z-50 transition-all ease-out"
+          style={{
+            top: 0,
+            left: 0,
+            width: "56px",
+            height: "64px",
+            transitionDuration: "480ms",
+            transform: `translate(${
+              flyingProgress === 0
+                ? `${flyingLetter.startX - 28}px, ${flyingLetter.startY - 32}px`
+                : `${flyingLetter.targetX - 28}px, ${flyingLetter.targetY - 32}px`
+            }) scale(${flyingProgress === 0 ? 1.25 : 1.0}) rotate(${
+              flyingProgress === 0 ? "0deg" : "360deg"
+            })`,
+          }}
+        >
+          <div className="w-14 h-16 bg-gradient-to-br from-rose-400 via-pink-500 to-indigo-600 rounded-2xl flex items-center justify-center font-black text-3xl text-white shadow-2xl border-2 border-white ring-4 ring-rose-300">
+            <span>{flyingLetter.char}</span>
+            <span className="absolute -top-1 -right-1 text-xs">✨</span>
+          </div>
+        </div>
+      )}
 
       {/* Auxiliary action buttons */}
       <div className="flex justify-center gap-3">
