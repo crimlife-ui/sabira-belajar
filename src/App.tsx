@@ -12,6 +12,8 @@ import { NumberExplorer } from "./components/numbers/NumberExplorer";
 import { CountingGame } from "./components/numbers/CountingGame";
 import { VisualMathGame } from "./components/math/VisualMathGame";
 import { HijaiyahExplorer } from "./components/hijaiyah/HijaiyahExplorer";
+import { HijaiyahReadingPractice } from "./components/hijaiyah/HijaiyahReadingPractice";
+import { HijaiyahConnectedLetters } from "./components/hijaiyah/HijaiyahConnectedLetters";
 import { ArabicNumberExplorer } from "./components/hijaiyah/ArabicNumberExplorer";
 import { HijaiyahQuiz } from "./components/hijaiyah/HijaiyahQuiz";
 import { StickerAlbum } from "./components/stickers/StickerAlbum";
@@ -21,7 +23,7 @@ import { STICKERS_LIST } from "./data/stickersData";
 
 type Screen = "home" | "letters" | "numbers" | "math" | "hijaiyah";
 type LetterMode = "explore" | "spelling" | "syllables" | "balloon";
-type HijaiyahMode = "letters" | "numbers" | "quiz";
+type HijaiyahMode = "letters" | "reading" | "connected" | "numbers" | "quiz";
 
 export const App: React.FC = () => {
   const [currentScreen, setCurrentScreen] = useState<Screen>("home");
@@ -138,6 +140,10 @@ export const App: React.FC = () => {
       case "hijaiyah":
         return hijaiyahTab === "letters"
           ? "🌙 Mengenal Huruf Hijaiyah"
+          : hijaiyahTab === "reading"
+          ? "📖 Membaca A-Ba-Ta"
+          : hijaiyahTab === "connected"
+          ? "✍️ Huruf Hijaiyah Sambung"
           : hijaiyahTab === "numbers"
           ? "🔢 Mengenal Angka Arab"
           : "🎯 Kuis Tebak Hijaiyah";
@@ -250,7 +256,7 @@ export const App: React.FC = () => {
                     <span>Huruf Hijaiyah</span>
                   </h3>
                   <p className="text-white/85 text-sm font-medium mt-1">
-                    Huruf Arab Alif-Ya, panduan harakat, angka Arab (٠-١٠), & kuis tebak ceria.
+                    Huruf Alif-Ya, baca A-Ba-Ta, huruf sambung, angka Arab, & tebak ceria.
                   </p>
                 </div>
               </button>
@@ -466,51 +472,81 @@ export const App: React.FC = () => {
         {currentScreen === "hijaiyah" && (
           <div className="space-y-4">
             {/* Sub Tabs */}
-            <div className="flex justify-center gap-2 max-w-lg mx-auto p-1.5 bg-white/80 backdrop-blur rounded-2xl border border-emerald-200 shadow-sm">
+            <div className="flex flex-wrap justify-center gap-1.5 sm:gap-2 max-w-3xl mx-auto p-1.5 bg-white/80 backdrop-blur rounded-2xl border border-emerald-200 shadow-sm">
               <button
                 onClick={() => {
                   sounds.playPop();
                   setHijaiyahTab("letters");
                 }}
-                className={`flex-1 py-2.5 px-3 rounded-xl font-black text-xs sm:text-sm transition-all cursor-pointer ${
+                className={`flex-1 min-w-[5.5rem] py-2.5 px-2 rounded-xl font-black text-xs sm:text-sm transition-all cursor-pointer ${
                   hijaiyahTab === "letters"
                     ? "bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-md scale-102"
                     : "text-slate-600 hover:bg-emerald-50"
                 }`}
               >
-                🌙 Huruf Hijaiyah
+                🌙 Huruf
+              </button>
+              <button
+                onClick={() => {
+                  sounds.playPop();
+                  setHijaiyahTab("reading");
+                }}
+                className={`flex-1 min-w-[5.5rem] py-2.5 px-2 rounded-xl font-black text-xs sm:text-sm transition-all cursor-pointer ${
+                  hijaiyahTab === "reading"
+                    ? "bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-md scale-102"
+                    : "text-slate-600 hover:bg-emerald-50"
+                }`}
+              >
+                📖 A-Ba-Ta
+              </button>
+              <button
+                onClick={() => {
+                  sounds.playPop();
+                  setHijaiyahTab("connected");
+                }}
+                className={`flex-1 min-w-[5.5rem] py-2.5 px-2 rounded-xl font-black text-xs sm:text-sm transition-all cursor-pointer ${
+                  hijaiyahTab === "connected"
+                    ? "bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-md scale-102"
+                    : "text-slate-600 hover:bg-emerald-50"
+                }`}
+              >
+                ✍️ Sambung
               </button>
               <button
                 onClick={() => {
                   sounds.playPop();
                   setHijaiyahTab("numbers");
                 }}
-                className={`flex-1 py-2.5 px-3 rounded-xl font-black text-xs sm:text-sm transition-all cursor-pointer ${
+                className={`flex-1 min-w-[5.5rem] py-2.5 px-2 rounded-xl font-black text-xs sm:text-sm transition-all cursor-pointer ${
                   hijaiyahTab === "numbers"
                     ? "bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-md scale-102"
                     : "text-slate-600 hover:bg-emerald-50"
                 }`}
               >
-                🔢 Angka Arab
+                🔢 Angka
               </button>
               <button
                 onClick={() => {
                   sounds.playPop();
                   setHijaiyahTab("quiz");
                 }}
-                className={`flex-1 py-2.5 px-3 rounded-xl font-black text-xs sm:text-sm transition-all cursor-pointer ${
+                className={`flex-1 min-w-[5.5rem] py-2.5 px-2 rounded-xl font-black text-xs sm:text-sm transition-all cursor-pointer ${
                   hijaiyahTab === "quiz"
                     ? "bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-md scale-102"
                     : "text-slate-600 hover:bg-emerald-50"
                 }`}
               >
-                🎯 Tebak Ceria
+                🎯 Kuis
               </button>
             </div>
 
             {/* Active Sub Mode */}
             {hijaiyahTab === "letters" ? (
               <HijaiyahExplorer />
+            ) : hijaiyahTab === "reading" ? (
+              <HijaiyahReadingPractice />
+            ) : hijaiyahTab === "connected" ? (
+              <HijaiyahConnectedLetters />
             ) : hijaiyahTab === "numbers" ? (
               <ArabicNumberExplorer />
             ) : (
