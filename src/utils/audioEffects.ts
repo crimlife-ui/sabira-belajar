@@ -1,4 +1,4 @@
-﻿// Web Audio API Synthesizer - 100% Offline, Instant, Friendly Kid Sound Effects
+// Web Audio API Synthesizer - 100% Offline, Instant, Friendly Kid Sound Effects
 
 class SoundManager {
   private ctx: AudioContext | null = null;
@@ -54,6 +54,77 @@ class SoundManager {
 
       osc.start(now);
       osc.stop(now + 0.09);
+    } catch {
+      // Audio safety
+    }
+  }
+
+  // Realistic balloon burst/pop sound with noise burst + pitch drop
+  public playBalloonPop() {
+    if (!this.soundEnabled) return;
+    const ctx = this.getContext();
+    if (!ctx) return;
+
+    try {
+      const now = ctx.currentTime;
+      // 1. Low thud
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(320, now);
+      osc.frequency.exponentialRampToValueAtTime(60, now + 0.12);
+
+      gain.gain.setValueAtTime(0.4, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.12);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.13);
+
+      // 2. High snappy pop burst
+      const osc2 = ctx.createOscillator();
+      const gain2 = ctx.createGain();
+      osc2.type = "triangle";
+      osc2.frequency.setValueAtTime(900, now);
+      osc2.frequency.exponentialRampToValueAtTime(150, now + 0.07);
+
+      gain2.gain.setValueAtTime(0.35, now);
+      gain2.gain.exponentialRampToValueAtTime(0.01, now + 0.07);
+
+      osc2.connect(gain2);
+      gain2.connect(ctx.destination);
+      osc2.start(now);
+      osc2.stop(now + 0.08);
+    } catch {
+      // Audio safety
+    }
+  }
+
+  // Flying whoosh sound as letter glides into box
+  public playWhoosh() {
+    if (!this.soundEnabled) return;
+    const ctx = this.getContext();
+    if (!ctx) return;
+
+    try {
+      const now = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(350, now);
+      osc.frequency.exponentialRampToValueAtTime(750, now + 0.25);
+
+      gain.gain.setValueAtTime(0.05, now);
+      gain.gain.linearRampToValueAtTime(0.25, now + 0.12);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc.start(now);
+      osc.stop(now + 0.26);
     } catch {
       // Audio safety
     }
