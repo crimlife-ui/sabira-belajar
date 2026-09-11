@@ -202,7 +202,7 @@ export const HijaiyahReadingPractice: React.FC = () => {
                 <button
                   key={ltrIdx}
                   onClick={() => handleTapLetter(ltrIdx, ltr.latin)}
-                  className={`flex-1 max-w-[7.5rem] py-4 sm:py-6 px-2 rounded-3xl flex flex-col items-center justify-center transition-all cursor-pointer select-none border-4 ${
+                  className={`flex-1 max-w-[8.5rem] py-5 sm:py-7 px-2 rounded-3xl flex flex-col items-center justify-center transition-all cursor-pointer select-none border-4 ${
                     isHighlighted
                       ? "bg-gradient-to-b from-yellow-300 to-amber-400 text-amber-950 border-white shadow-2xl scale-110 ring-4 ring-yellow-300 animate-bounce"
                       : `${ltr.bgColor} hover:bg-white text-slate-800 border-emerald-300 shadow-md active:scale-95`
@@ -210,7 +210,7 @@ export const HijaiyahReadingPractice: React.FC = () => {
                   title={`Ketuk untuk mendengar suara "${ltr.latin}"`}
                 >
                   <span
-                    className={`text-5xl sm:text-6xl font-black leading-none ${
+                    className={`text-6xl sm:text-7xl font-black leading-tight py-1 select-none ${
                       isHighlighted ? "text-amber-950" : ltr.color
                     }`}
                     style={{ fontFamily: "'Traditional Arabic', 'Amiri', serif" }}
@@ -218,7 +218,7 @@ export const HijaiyahReadingPractice: React.FC = () => {
                     {ltr.arabic}
                   </span>
                   <span
-                    className={`text-xs sm:text-sm font-black mt-2 px-2 py-0.5 rounded-full ${
+                    className={`text-xs sm:text-sm font-black mt-2 px-2.5 py-0.5 rounded-full ${
                       isHighlighted
                         ? "bg-amber-900/20 text-amber-950"
                         : "bg-white/80 text-slate-700 shadow-xs"

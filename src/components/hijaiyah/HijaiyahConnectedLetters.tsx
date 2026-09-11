@@ -154,26 +154,26 @@ export const HijaiyahConnectedLetters: React.FC = () => {
             )}
 
             {/* 4 Form Cards (Arranged in Reading Order: Tunggal, Awal, Tengah, Akhir) */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3 w-full my-3" dir="rtl">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 w-full my-4" dir="rtl">
               {/* 1. Tunggal / Sendiri */}
               <div
                 onClick={() => {
                   sounds.playPop();
                   speech.speak(`Bentuk tunggal huruf ${selectedLetter.name}`, 0.9, 1.15);
                 }}
-                className="bg-emerald-50/80 hover:bg-emerald-100/70 border-2 border-emerald-300 rounded-2xl p-3 flex flex-col items-center justify-center cursor-pointer active:scale-95 transition-all shadow-sm"
+                className="bg-emerald-50/80 hover:bg-emerald-100 border-2 border-emerald-300 rounded-3xl p-3 sm:p-4 flex flex-col items-center justify-center cursor-pointer active:scale-95 transition-all shadow-sm min-h-[8.5rem] sm:min-h-[9.5rem]"
                 title="Bentuk Tunggal (Lepas)"
               >
                 <span className="text-xs font-bold text-slate-500 mb-1" dir="ltr">
                   1. Sendiri (Lepas)
                 </span>
                 <span
-                  className="text-4xl sm:text-5xl font-black text-emerald-800 my-1"
+                  className="text-5xl sm:text-6xl md:text-7xl font-black text-emerald-800 my-2 leading-tight select-none"
                   style={{ fontFamily: "'Traditional Arabic', 'Amiri', serif" }}
                 >
                   {selectedLetter.isolated}
                 </span>
-                <span className="text-[11px] font-semibold text-emerald-700 mt-1" dir="ltr">
+                <span className="text-xs font-bold text-emerald-700 mt-1" dir="ltr">
                   Tunggal
                 </span>
               </div>
@@ -184,19 +184,19 @@ export const HijaiyahConnectedLetters: React.FC = () => {
                   sounds.playPop();
                   speech.speak(`Bentuk di awal kata huruf ${selectedLetter.name}`, 0.9, 1.15);
                 }}
-                className="bg-blue-50/80 hover:bg-blue-100/70 border-2 border-blue-300 rounded-2xl p-3 flex flex-col items-center justify-center cursor-pointer active:scale-95 transition-all shadow-sm"
+                className="bg-blue-50/80 hover:bg-blue-100 border-2 border-blue-300 rounded-3xl p-3 sm:p-4 flex flex-col items-center justify-center cursor-pointer active:scale-95 transition-all shadow-sm min-h-[8.5rem] sm:min-h-[9.5rem]"
                 title="Bentuk di Awal Kata"
               >
                 <span className="text-xs font-bold text-slate-500 mb-1" dir="ltr">
                   2. Di Awal
                 </span>
                 <span
-                  className="text-4xl sm:text-5xl font-black text-blue-800 my-1"
+                  className="text-5xl sm:text-6xl md:text-7xl font-black text-blue-800 my-2 leading-tight select-none"
                   style={{ fontFamily: "'Traditional Arabic', 'Amiri', serif" }}
                 >
                   {selectedLetter.initial}
                 </span>
-                <span className="text-[11px] font-semibold text-blue-700 mt-1" dir="ltr">
+                <span className="text-xs font-bold text-blue-700 mt-1" dir="ltr">
                   Awal Kata
                 </span>
               </div>
@@ -207,19 +207,19 @@ export const HijaiyahConnectedLetters: React.FC = () => {
                   sounds.playPop();
                   speech.speak(`Bentuk di tengah kata huruf ${selectedLetter.name}`, 0.9, 1.15);
                 }}
-                className="bg-purple-50/80 hover:bg-purple-100/70 border-2 border-purple-300 rounded-2xl p-3 flex flex-col items-center justify-center cursor-pointer active:scale-95 transition-all shadow-sm"
+                className="bg-purple-50/80 hover:bg-purple-100 border-2 border-purple-300 rounded-3xl p-3 sm:p-4 flex flex-col items-center justify-center cursor-pointer active:scale-95 transition-all shadow-sm min-h-[8.5rem] sm:min-h-[9.5rem]"
                 title="Bentuk di Tengah Kata"
               >
                 <span className="text-xs font-bold text-slate-500 mb-1" dir="ltr">
                   3. Di Tengah
                 </span>
                 <span
-                  className="text-4xl sm:text-5xl font-black text-purple-800 my-1"
+                  className="text-5xl sm:text-6xl md:text-7xl font-black text-purple-800 my-2 leading-tight select-none"
                   style={{ fontFamily: "'Traditional Arabic', 'Amiri', serif" }}
                 >
                   {selectedLetter.medial}
                 </span>
-                <span className="text-[11px] font-semibold text-purple-700 mt-1" dir="ltr">
+                <span className="text-xs font-bold text-purple-700 mt-1" dir="ltr">
                   Tengah Kata
                 </span>
               </div>
@@ -230,19 +230,19 @@ export const HijaiyahConnectedLetters: React.FC = () => {
                   sounds.playPop();
                   speech.speak(`Bentuk di akhir kata huruf ${selectedLetter.name}`, 0.9, 1.15);
                 }}
-                className="bg-rose-50/80 hover:bg-rose-100/70 border-2 border-rose-300 rounded-2xl p-3 flex flex-col items-center justify-center cursor-pointer active:scale-95 transition-all shadow-sm"
+                className="bg-rose-50/80 hover:bg-rose-100 border-2 border-rose-300 rounded-3xl p-3 sm:p-4 flex flex-col items-center justify-center cursor-pointer active:scale-95 transition-all shadow-sm min-h-[8.5rem] sm:min-h-[9.5rem]"
                 title="Bentuk di Akhir Kata"
               >
                 <span className="text-xs font-bold text-slate-500 mb-1" dir="ltr">
                   4. Di Akhir
                 </span>
                 <span
-                  className="text-4xl sm:text-5xl font-black text-rose-800 my-1"
+                  className="text-5xl sm:text-6xl md:text-7xl font-black text-rose-800 my-2 leading-tight select-none"
                   style={{ fontFamily: "'Traditional Arabic', 'Amiri', serif" }}
                 >
                   {selectedLetter.final}
                 </span>
-                <span className="text-[11px] font-semibold text-rose-700 mt-1" dir="ltr">
+                <span className="text-xs font-bold text-rose-700 mt-1" dir="ltr">
                   Akhir Kata
                 </span>
               </div>
@@ -258,24 +258,24 @@ export const HijaiyahConnectedLetters: React.FC = () => {
                   1.15
                 );
               }}
-              className="mt-4 p-3 bg-emerald-50 hover:bg-emerald-100/80 rounded-2xl border-2 border-dashed border-emerald-300 flex items-center justify-between gap-3 cursor-pointer transition-all active:scale-98 max-w-sm w-full"
+              className="mt-4 p-4 bg-emerald-50 hover:bg-emerald-100/90 rounded-3xl border-3 border-dashed border-emerald-300 flex items-center justify-between gap-4 cursor-pointer transition-all active:scale-98 max-w-md w-full shadow-sm"
             >
               <div className="text-left">
-                <span className="text-xs font-bold text-slate-500 block">Contoh dalam kata:</span>
-                <div className="flex items-baseline gap-2">
+                <span className="text-xs font-bold text-slate-500 block mb-1">Contoh dalam kata:</span>
+                <div className="flex items-center gap-3">
                   <span
-                    className="text-2xl font-bold text-emerald-900"
+                    className="text-4xl sm:text-5xl font-black text-emerald-950 leading-relaxed drop-shadow-sm select-none"
                     dir="rtl"
                     style={{ fontFamily: "'Traditional Arabic', 'Amiri', serif" }}
                   >
                     {selectedLetter.exampleWord}
                   </span>
-                  <span className="text-sm font-bold text-slate-700">
+                  <span className="text-base sm:text-lg font-black text-slate-700">
                     ({selectedLetter.exampleTransliteration})
                   </span>
                 </div>
               </div>
-              <Volume2 className="w-5 h-5 text-emerald-600 shrink-0" />
+              <Volume2 className="w-6 h-6 text-emerald-600 shrink-0" />
             </div>
 
             {/* Listen Button */}
@@ -376,22 +376,22 @@ export const HijaiyahConnectedLetters: React.FC = () => {
                 <span className="text-xs font-bold text-slate-500 block mb-2">
                   Huruf-huruf sebelum disambung:
                 </span>
-                <div className="flex items-center justify-center gap-2 sm:gap-3" dir="rtl">
+                <div className="flex items-center justify-center gap-2.5 sm:gap-4" dir="rtl">
                   {currentWord.separateParts.map((part, pIdx) => (
                     <React.Fragment key={pIdx}>
-                      <div className="w-16 h-20 sm:w-20 sm:h-24 bg-white rounded-2xl border-3 border-emerald-300 shadow-md flex flex-col items-center justify-center">
+                      <div className="w-20 h-24 sm:w-24 sm:h-28 bg-white rounded-3xl border-3 border-emerald-300 shadow-md flex flex-col items-center justify-center p-1">
                         <span
-                          className="text-4xl sm:text-5xl font-black text-emerald-800 leading-none"
+                          className="text-5xl sm:text-6xl font-black text-emerald-800 leading-tight select-none my-auto"
                           style={{ fontFamily: "'Traditional Arabic', 'Amiri', serif" }}
                         >
                           {part.letter}
                         </span>
-                        <span className="text-[9px] sm:text-[10px] font-bold text-slate-500 mt-1" dir="ltr">
+                        <span className="text-[10px] sm:text-xs font-bold text-slate-500 mt-0.5" dir="ltr">
                           {part.name}
                         </span>
                       </div>
                       {pIdx < currentWord.separateParts.length - 1 && (
-                        <span className="text-2xl font-black text-emerald-600">+</span>
+                        <span className="text-3xl font-black text-emerald-600 select-none">+</span>
                       )}
                     </React.Fragment>
                   ))}
@@ -408,20 +408,20 @@ export const HijaiyahConnectedLetters: React.FC = () => {
               </div>
             ) : (
               /* State 2: Joined Word */
-              <div className="w-full my-4 p-5 bg-gradient-to-b from-emerald-100 to-teal-50 rounded-3xl border-3 border-emerald-400 shadow-inner animate-scaleIn">
-                <span className="text-xs font-bold text-emerald-800 uppercase tracking-wider block mb-1">
+              <div className="w-full my-4 p-5 sm:p-7 bg-gradient-to-b from-emerald-100 to-teal-50 rounded-3xl border-4 border-emerald-400 shadow-inner animate-scaleIn">
+                <span className="text-xs font-bold text-emerald-800 uppercase tracking-wider block mb-2">
                   ✨ Hasil Huruf Setelah Disambung ✨
                 </span>
-                <div className="py-2">
+                <div className="py-3 sm:py-4">
                   <span
-                    className="text-6xl sm:text-7xl font-black text-emerald-900 leading-none tracking-normal drop-shadow-sm select-none"
+                    className="text-7xl sm:text-8xl md:text-9xl font-black text-emerald-950 leading-relaxed tracking-wider drop-shadow-md select-none"
                     dir="rtl"
                     style={{ fontFamily: "'Traditional Arabic', 'Amiri', serif" }}
                   >
                     {currentWord.connectedWord}
                   </span>
                 </div>
-                <h3 className="text-3xl font-black text-slate-800 mt-2">
+                <h3 className="text-3xl sm:text-4xl font-black text-slate-800 mt-2">
                   {currentWord.transliteration}
                 </h3>
                 <p className="text-base font-bold text-emerald-700">
