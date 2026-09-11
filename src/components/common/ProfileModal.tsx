@@ -101,8 +101,8 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/65 backdrop-blur-md animate-fadeIn">
-      <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl border-4 border-pink-300 relative overflow-hidden animate-pop">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/65 backdrop-blur-md animate-fadeIn overflow-y-auto">
+      <div className="bg-white rounded-3xl max-w-md w-full p-4 sm:p-6 shadow-2xl border-4 border-pink-300 relative overflow-hidden animate-pop my-auto">
         {/* Close Button (only if not first time setup) */}
         {!isFirstTime && onClose && (
           <button
@@ -110,15 +110,15 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
               sounds.playPop();
               onClose();
             }}
-            className="absolute top-4 right-4 p-2 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-100 cursor-pointer"
+            className="absolute top-3 right-3 p-1.5 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-100 cursor-pointer"
           >
-            <X className="w-6 h-6" />
+            <X className="w-5 h-5" />
           </button>
         )}
 
         {/* Mode Switcher (only shown if not first time) */}
         {!isFirstTime && (
-          <div className="flex gap-2 p-1.5 bg-slate-100 rounded-2xl mb-4 border border-slate-200">
+          <div className="flex gap-1.5 p-1 bg-slate-100 rounded-xl mb-3 border border-slate-200">
             <button
               type="button"
               onClick={() => {
@@ -128,7 +128,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                 setSelectedAvatar(initialProfile?.avatar || "👧🏻");
                 setSelectedAge(initialProfile?.age || 5);
               }}
-              className={`flex-1 py-2 px-3 rounded-xl font-bold text-xs sm:text-sm transition-all cursor-pointer ${
+              className={`flex-1 py-1.5 px-2 rounded-lg font-bold text-xs transition-all cursor-pointer ${
                 mode === "edit"
                   ? "bg-white text-slate-800 shadow-sm border border-slate-200 font-black"
                   : "text-slate-500 hover:text-slate-700"
@@ -145,7 +145,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                 setSelectedAvatar("👧🏻");
                 setSelectedAge(5);
               }}
-              className={`flex-1 py-2 px-3 rounded-xl font-bold text-xs sm:text-sm transition-all cursor-pointer ${
+              className={`flex-1 py-1.5 px-2 rounded-lg font-bold text-xs transition-all cursor-pointer ${
                 mode === "new"
                   ? "bg-gradient-to-r from-pink-500 to-rose-500 text-white shadow-md font-black"
                   : "text-slate-500 hover:text-slate-700"
@@ -157,46 +157,34 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
         )}
 
         {/* Header */}
-        <div className="text-center space-y-1.5 mb-5">
-          <div className="inline-flex items-center gap-2 px-3 py-1 bg-pink-100 text-pink-700 rounded-full text-xs sm:text-sm font-black">
-            <Sparkles className="w-4 h-4 fill-pink-500 text-pink-600" />
+        <div className="text-center space-y-0.5 mb-3">
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-pink-100 text-pink-700 rounded-full text-[11px] font-black">
+            <Sparkles className="w-3.5 h-3.5 fill-pink-500 text-pink-600" />
             <span>
               {isFirstTime
                 ? "Selamat Datang Sahabat Cilik!"
                 : mode === "new"
-                ? "Tambah Sahabat Cilik Baru"
+                ? "Tambah Anak Baru (Mulai 0 ⭐)"
                 : "Ubah Profil Sahabat Cilik"}
             </span>
           </div>
 
-          <h2 className="text-2xl sm:text-3xl font-black text-slate-800">
+          <h2 className="text-lg sm:text-xl font-black text-slate-800 leading-tight">
             {isFirstTime
               ? "Siapa Nama Teman Baru Kita?"
               : mode === "new"
-              ? "Selamat Datang Anak Hebat!"
+              ? "Profil Sahabat Cilik Baru"
               : "Profil Petualang Belajar"}
           </h2>
-          <p className="text-xs sm:text-sm text-slate-500 font-medium">
-            {mode === "new" || isFirstTime
-              ? "Menambahkan profil baru akan memulai progres belajar dari awal (0 bintang)."
-              : "Perbarui nama, avatar, atau usia tanpa mereset progres bintangmu."}
-          </p>
         </div>
 
-        {mode === "new" && !isFirstTime && (
-          <div className="mb-4 p-3 bg-amber-50 border-2 border-amber-300 rounded-2xl text-amber-900 text-xs font-bold text-center flex items-center justify-center gap-2">
-            <span>✨</span>
-            <span>Profil baru akan memulai progres dan petualangan bintang dari awal!</span>
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit} className="space-y-5">
+        <form onSubmit={handleSubmit} className="space-y-3">
           {/* Avatar Selection */}
-          <div className="space-y-2">
-            <label className="block text-xs sm:text-sm font-black text-slate-700 text-left">
-              Pilih Karakter Favoritmu:
+          <div className="space-y-1">
+            <label className="block text-xs font-bold text-slate-700 text-left">
+              Pilih Karakter Favorit:
             </label>
-            <div className="grid grid-cols-5 gap-2 sm:gap-2.5">
+            <div className="grid grid-cols-5 gap-1.5">
               {AVATAR_CHOICES.map((av) => {
                 const isSelected = selectedAvatar === av.emoji;
                 return (
@@ -207,10 +195,10 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                       sounds.playPop();
                       setSelectedAvatar(av.emoji);
                     }}
-                    className={`aspect-square rounded-2xl flex flex-col items-center justify-center text-3xl sm:text-4xl transition-all cursor-pointer border-3 ${
+                    className={`h-11 sm:h-12 rounded-xl flex items-center justify-center text-2xl sm:text-3xl transition-all cursor-pointer border-2 ${
                       isSelected
-                        ? "bg-pink-100 border-pink-500 scale-110 shadow-lg ring-4 ring-pink-200 -translate-y-1"
-                        : "bg-slate-50 hover:bg-pink-50 border-slate-200 hover:border-pink-200"
+                        ? "bg-pink-100 border-pink-500 scale-105 shadow-md ring-2 ring-pink-200"
+                        : "bg-slate-50 hover:bg-pink-50 border-slate-200"
                     }`}
                     title={av.label}
                   >
@@ -222,10 +210,10 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
           </div>
 
           {/* Name Input */}
-          <div className="space-y-1.5 text-left">
-            <label className="block text-xs sm:text-sm font-black text-slate-700 flex items-center gap-1.5">
-              <User className="w-4 h-4 text-pink-500" />
-              <span>Nama Panggilan Anak:</span>
+          <div className="space-y-1 text-left">
+            <label className="block text-xs font-bold text-slate-700 flex items-center gap-1">
+              <User className="w-3.5 h-3.5 text-pink-500" />
+              <span>Nama Panggilan:</span>
             </label>
             <input
               type="text"
@@ -234,23 +222,23 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                 setName(e.target.value);
                 if (error) setError("");
               }}
-              placeholder="Contoh: Sabira, Kenzo, Aisyah..."
+              placeholder="Contoh: Sabira, Kenzo, Cia..."
               maxLength={20}
-              className="w-full text-lg sm:text-xl font-bold py-3 px-4 rounded-2xl border-2 border-slate-300 focus:border-pink-500 focus:outline-none focus:ring-4 focus:ring-pink-100 text-center text-slate-800"
+              className="w-full text-base sm:text-lg font-bold py-2 px-3 rounded-xl border-2 border-slate-300 focus:border-pink-500 focus:outline-none focus:ring-2 focus:ring-pink-100 text-center text-slate-800"
               autoFocus
             />
             {error && (
-              <p className="text-xs text-rose-500 font-bold text-center mt-1">{error}</p>
+              <p className="text-[11px] text-rose-500 font-bold text-center mt-0.5">{error}</p>
             )}
           </div>
 
           {/* Age Selection */}
-          <div className="space-y-2 text-left">
-            <label className="block text-xs sm:text-sm font-black text-slate-700 flex items-center gap-1.5">
-              <Heart className="w-4 h-4 text-rose-500" />
+          <div className="space-y-1 text-left">
+            <label className="block text-xs font-bold text-slate-700 flex items-center gap-1">
+              <Heart className="w-3.5 h-3.5 text-rose-500" />
               <span>Usia Anak:</span>
             </label>
-            <div className="flex justify-between gap-2">
+            <div className="flex justify-between gap-1.5">
               {AGE_OPTIONS.map((ageVal) => {
                 const isSelected = selectedAge === ageVal;
                 return (
@@ -261,9 +249,9 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                       sounds.playPop();
                       setSelectedAge(ageVal);
                     }}
-                    className={`flex-1 py-2 rounded-xl font-black text-xs sm:text-sm border-2 transition-all cursor-pointer ${
+                    className={`flex-1 py-1.5 rounded-lg font-black text-xs border-2 transition-all cursor-pointer ${
                       isSelected
-                        ? "bg-gradient-to-r from-pink-500 to-rose-500 text-white border-pink-400 shadow-md scale-105"
+                        ? "bg-gradient-to-r from-pink-500 to-rose-500 text-white border-pink-400 shadow-sm"
                         : "bg-slate-100 text-slate-600 hover:bg-slate-200 border-slate-200"
                     }`}
                   >
@@ -277,15 +265,15 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
           {/* Submit Button */}
           <button
             type="submit"
-            className="w-full py-4 mt-2 bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-600 hover:from-pink-600 hover:to-indigo-700 text-white font-black text-lg sm:text-xl rounded-2xl shadow-xl border-2 border-pink-300 flex items-center justify-center gap-2 active:scale-95 transition-all cursor-pointer"
+            className="w-full py-2.5 sm:py-3 mt-1 bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-600 hover:from-pink-600 hover:to-indigo-700 text-white font-black text-sm sm:text-base rounded-xl shadow-lg border-2 border-pink-300 flex items-center justify-center gap-2 active:scale-95 transition-all cursor-pointer"
           >
-            <Check className="w-6 h-6 stroke-[3]" />
+            <Check className="w-5 h-5 stroke-[3]" />
             <span>
               {isFirstTime
                 ? "Mulai Belajar & Bermain! 🎈"
                 : mode === "new"
-                ? "Mulai Progres Baru dengan Profil Ini! 🌟"
-                : "Simpan Perubahan Profil ✨"}
+                ? "Mulai Progres Baru! 🌟"
+                : "Simpan Perubahan ✨"}
             </span>
           </button>
         </form>
