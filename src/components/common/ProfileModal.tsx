@@ -14,7 +14,7 @@ interface ProfileModalProps {
   isOpen: boolean;
   isFirstTime?: boolean;
   initialProfile?: UserProfile;
-  onSave: (profile: UserProfile) => void;
+  onSave: (profile: UserProfile, isNewProfile?: boolean) => void;
   onClose?: () => void;
 }
 
@@ -40,10 +40,30 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
   onSave,
   onClose,
 }) => {
+  // Mode: "edit" (keep progress) vs "new" (start fresh progress 0 stars)
+  const [mode, setMode] = useState<"edit" | "new">(isFirstTime ? "new" : "edit");
   const [name, setName] = useState(initialProfile?.name || "Sabira");
   const [selectedAvatar, setSelectedAvatar] = useState(initialProfile?.avatar || "👧🏻");
   const [selectedAge, setSelectedAge] = useState(initialProfile?.age || 5);
   const [error, setError] = useState("");
+
+  // Update state whenever modal opens or initialProfile changes
+  React.useEffect(() => {
+    if (isOpen) {
+      if (isFirstTime) {
+        setMode("new");
+        setName("");
+        setSelectedAvatar("👧🏻");
+        setSelectedAge(5);
+      } else {
+        setMode("edit");
+        setName(initialProfile?.name || "Sabira");
+        setSelectedAvatar(initialProfile?.avatar || "👧🏻");
+        setSelectedAge(initialProfile?.age || 5);
+      }
+      setError("");
+    }
+  }, [isOpen, isFirstTime, initialProfile]);
 
   if (!isOpen) return null;
 
@@ -69,13 +89,15 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
       origin: { y: 0.5 },
     });
 
+    const isNew = isFirstTime || mode === "new";
+
     speech.speak(
       `Halo ${cleanName}! Selamat belajar dan bermain di Sabira Belajar!`,
       0.9,
       1.15
     );
 
-    onSave(newProfile);
+    onSave(newProfile, isNew);
   };
 
   return (
@@ -94,20 +116,79 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
           </button>
         )}
 
+        {/* Mode Switcher (only shown if not first time) */}
+        {!isFirstTime && (
+          <div className="flex gap-2 p-1.5 bg-slate-100 rounded-2xl mb-4 border border-slate-200">
+            <button
+              type="button"
+              onClick={() => {
+                sounds.playPop();
+                setMode("edit");
+                setName(initialProfile?.name || "Sabira");
+                setSelectedAvatar(initialProfile?.avatar || "👧🏻");
+                setSelectedAge(initialProfile?.age || 5);
+              }}
+              className={`flex-1 py-2 px-3 rounded-xl font-bold text-xs sm:text-sm transition-all cursor-pointer ${
+                mode === "edit"
+                  ? "bg-white text-slate-800 shadow-sm border border-slate-200 font-black"
+                  : "text-slate-500 hover:text-slate-700"
+              }`}
+            >
+              Ubah Profil ({initialProfile?.name})
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                sounds.playPop();
+                setMode("new");
+                setName("");
+                setSelectedAvatar("👧🏻");
+                setSelectedAge(5);
+              }}
+              className={`flex-1 py-2 px-3 rounded-xl font-bold text-xs sm:text-sm transition-all cursor-pointer ${
+                mode === "new"
+                  ? "bg-gradient-to-r from-pink-500 to-rose-500 text-white shadow-md font-black"
+                  : "text-slate-500 hover:text-slate-700"
+              }`}
+            >
+              + Tambah Anak Baru
+            </button>
+          </div>
+        )}
+
         {/* Header */}
-        <div className="text-center space-y-2 mb-6">
+        <div className="text-center space-y-1.5 mb-5">
           <div className="inline-flex items-center gap-2 px-3 py-1 bg-pink-100 text-pink-700 rounded-full text-xs sm:text-sm font-black">
             <Sparkles className="w-4 h-4 fill-pink-500 text-pink-600" />
-            <span>{isFirstTime ? "Selamat Datang Sahabat Cilik!" : "Ubah Profil Sahabat Cilik"}</span>
+            <span>
+              {isFirstTime
+                ? "Selamat Datang Sahabat Cilik!"
+                : mode === "new"
+                ? "Tambah Sahabat Cilik Baru"
+                : "Ubah Profil Sahabat Cilik"}
+            </span>
           </div>
 
           <h2 className="text-2xl sm:text-3xl font-black text-slate-800">
-            {isFirstTime ? "Siapa Nama Teman Baru Kita?" : "Profil Petualang Belajar"}
+            {isFirstTime
+              ? "Siapa Nama Teman Baru Kita?"
+              : mode === "new"
+              ? "Selamat Datang Anak Hebat!"
+              : "Profil Petualang Belajar"}
           </h2>
           <p className="text-xs sm:text-sm text-slate-500 font-medium">
-            Pilih avatar dan isi nama panggilanmu agar petualangan belajar lebih seru!
+            {mode === "new" || isFirstTime
+              ? "Menambahkan profil baru akan memulai progres belajar dari awal (0 bintang)."
+              : "Perbarui nama, avatar, atau usia tanpa mereset progres bintangmu."}
           </p>
         </div>
+
+        {mode === "new" && !isFirstTime && (
+          <div className="mb-4 p-3 bg-amber-50 border-2 border-amber-300 rounded-2xl text-amber-900 text-xs font-bold text-center flex items-center justify-center gap-2">
+            <span>✨</span>
+            <span>Profil baru akan memulai progres dan petualangan bintang dari awal!</span>
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-5">
           {/* Avatar Selection */}
@@ -199,7 +280,13 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
             className="w-full py-4 mt-2 bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-600 hover:from-pink-600 hover:to-indigo-700 text-white font-black text-lg sm:text-xl rounded-2xl shadow-xl border-2 border-pink-300 flex items-center justify-center gap-2 active:scale-95 transition-all cursor-pointer"
           >
             <Check className="w-6 h-6 stroke-[3]" />
-            <span>{isFirstTime ? "Mulai Belajar & Bermain! 🎈" : "Simpan Profil ✨"}</span>
+            <span>
+              {isFirstTime
+                ? "Mulai Belajar & Bermain! 🎈"
+                : mode === "new"
+                ? "Mulai Progres Baru dengan Profil Ini! 🌟"
+                : "Simpan Perubahan Profil ✨"}
+            </span>
           </button>
         </form>
       </div>

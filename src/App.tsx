@@ -98,9 +98,17 @@ export const App: React.FC = () => {
     setSoundEnabled((prev) => !prev);
   };
 
-  const handleSaveProfile = (newProfile: UserProfile) => {
+  const handleSaveProfile = (newProfile: UserProfile, isNewProfile?: boolean) => {
     setProfile(newProfile);
     localStorage.setItem("sabira_profile", JSON.stringify(newProfile));
+    
+    // Jika menambah profil baru, mulai progres baru dari awal (0 bintang)
+    if (isNewProfile) {
+      setStars(0);
+      localStorage.setItem("sabira_stars", "0");
+      setUnlockedCelebration(null);
+    }
+
     setIsProfileModalOpen(false);
     setIsFirstTimeProfile(false);
   };
