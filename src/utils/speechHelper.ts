@@ -162,6 +162,18 @@ class SpeechHelper {
     this.speak(praises[randomIndex]);
   }
 
+  public speakHijaiyah(name: string, harakatName?: string, sound?: string) {
+    if (harakatName && sound) {
+      this.speak(`${name}, berharakat ${harakatName}, dibaca ${sound}`, 0.9, 1.15);
+    } else {
+      this.speak(`Huruf ${name}`, 0.9, 1.15);
+    }
+  }
+
+  public speakArabicNumber(arabicName: string, latinNum: number, indonesianName: string) {
+    this.speak(`${arabicName}. Angka ${latinNum}, ${indonesianName}`, 0.9, 1.15);
+  }
+
   public encourage() {
     const encourages = [
       "Yuk coba lagi, pasti bisa!",

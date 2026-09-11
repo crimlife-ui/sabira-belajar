@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import confetti from "canvas-confetti";
-import { Sparkles, Star, BookOpen, Hash, Calculator, Award } from "lucide-react";
+import { Sparkles, Star, BookOpen, Hash, Calculator, Award, Moon } from "lucide-react";
 import { TopBar } from "./components/common/TopBar";
 import { ParentalModal } from "./components/common/ParentalModal";
 import { ProfileModal, UserProfile } from "./components/common/ProfileModal";
@@ -11,18 +11,23 @@ import { BalloonSpellingGame } from "./components/letters/BalloonSpellingGame";
 import { NumberExplorer } from "./components/numbers/NumberExplorer";
 import { CountingGame } from "./components/numbers/CountingGame";
 import { VisualMathGame } from "./components/math/VisualMathGame";
+import { HijaiyahExplorer } from "./components/hijaiyah/HijaiyahExplorer";
+import { ArabicNumberExplorer } from "./components/hijaiyah/ArabicNumberExplorer";
+import { HijaiyahQuiz } from "./components/hijaiyah/HijaiyahQuiz";
 import { StickerAlbum } from "./components/stickers/StickerAlbum";
 import { sounds } from "./utils/audioEffects";
 import { speech } from "./utils/speechHelper";
 import { STICKERS_LIST } from "./data/stickersData";
 
-type Screen = "home" | "letters" | "numbers" | "math";
+type Screen = "home" | "letters" | "numbers" | "math" | "hijaiyah";
 type LetterMode = "explore" | "spelling" | "syllables" | "balloon";
+type HijaiyahMode = "letters" | "numbers" | "quiz";
 
 export const App: React.FC = () => {
   const [currentScreen, setCurrentScreen] = useState<Screen>("home");
   const [letterTab, setLetterTab] = useState<LetterMode>("explore");
   const [numberTab, setNumberTab] = useState<"explore" | "counting">("explore");
+  const [hijaiyahTab, setHijaiyahTab] = useState<HijaiyahMode>("letters");
 
   // Profile management (First-time onboarding detection)
   const [profile, setProfile] = useState<UserProfile | null>(() => {
@@ -130,6 +135,12 @@ export const App: React.FC = () => {
         return numberTab === "explore" ? "🔢 Mengenal Angka 0-20" : "🔢 Menghitung Benda";
       case "math":
         return "➕➖ Matematika Ceria";
+      case "hijaiyah":
+        return hijaiyahTab === "letters"
+          ? "🌙 Mengenal Huruf Hijaiyah"
+          : hijaiyahTab === "numbers"
+          ? "🔢 Mengenal Angka Arab"
+          : "🎯 Kuis Tebak Hijaiyah";
       default:
         return undefined;
     }
@@ -169,7 +180,7 @@ export const App: React.FC = () => {
                   Halo {childName}! Ayo Belajar & Bermain!
                 </h2>
                 <p className="text-white/90 text-sm sm:text-base font-medium max-w-lg">
-                  Pilih petualanganmu hari ini: mengenal huruf, mengeja suku kata, berhitung angka, atau matematika seru!
+                  Pilih petualanganmu hari ini: mengenal huruf, mengeja suku kata, huruf hijaiyah & angka Arab, atau matematika seru!
                 </p>
               </div>
 
@@ -186,8 +197,8 @@ export const App: React.FC = () => {
               </div>
             </div>
 
-            {/* 4 Big Main Cards Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+            {/* 5 Big Main Cards Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
               {/* Card 1: Huruf & Mengeja */}
               <button
                 onClick={() => {
@@ -216,7 +227,35 @@ export const App: React.FC = () => {
                 </div>
               </button>
 
-              {/* Card 2: Angka & Berhitung */}
+              {/* Card 2: Huruf Hijaiyah & Angka Arab */}
+              <button
+                onClick={() => {
+                  sounds.playPop();
+                  speech.speak("Ayo belajar huruf hijaiyah dan angka Arab!", 0.9, 1.15);
+                  setCurrentScreen("hijaiyah");
+                  setHijaiyahTab("letters");
+                }}
+                className="group relative overflow-hidden p-6 rounded-3xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-xl border-4 border-emerald-300/60 hover:border-white transition-all duration-300 hover:scale-[1.02] active:scale-98 text-left cursor-pointer flex flex-col justify-between min-h-[12rem]"
+              >
+                <div className="flex items-start justify-between">
+                  <div className="p-3 bg-white/20 rounded-2xl backdrop-blur">
+                    <Moon className="w-8 h-8 text-white" />
+                  </div>
+                  <span className="text-4xl group-hover:scale-125 transition-transform">
+                    🌙
+                  </span>
+                </div>
+                <div className="mt-4">
+                  <h3 className="text-2xl font-black tracking-wide flex items-center gap-2">
+                    <span>Huruf Hijaiyah</span>
+                  </h3>
+                  <p className="text-white/85 text-sm font-medium mt-1">
+                    Huruf Arab Alif-Ya, panduan harakat, angka Arab (٠-١٠), & kuis tebak ceria.
+                  </p>
+                </div>
+              </button>
+
+              {/* Card 3: Angka & Berhitung */}
               <button
                 onClick={() => {
                   sounds.playPop();
@@ -244,7 +283,7 @@ export const App: React.FC = () => {
                 </div>
               </button>
 
-              {/* Card 3: Matematika Ceria (+ dan -) */}
+              {/* Card 4: Matematika Ceria (+ dan -) */}
               <button
                 onClick={() => {
                   sounds.playPop();
@@ -271,14 +310,14 @@ export const App: React.FC = () => {
                 </div>
               </button>
 
-              {/* Card 4: Papan Stiker Hadiah */}
+              {/* Card 5: Papan Stiker Hadiah */}
               <button
                 onClick={() => {
                   sounds.playPop();
                   speech.speak("Lihat semua koleksi stiker hadiahmu!", 0.9, 1.15);
                   setIsStickersOpen(true);
                 }}
-                className="group relative overflow-hidden p-6 rounded-3xl bg-gradient-to-br from-amber-400 to-yellow-500 text-amber-950 shadow-xl border-4 border-yellow-200 hover:border-white transition-all duration-300 hover:scale-[1.02] active:scale-98 text-left cursor-pointer flex flex-col justify-between min-h-[12rem]"
+                className="group relative overflow-hidden p-6 rounded-3xl bg-gradient-to-br from-amber-400 to-yellow-500 text-amber-950 shadow-xl border-4 border-yellow-200 hover:border-white transition-all duration-300 hover:scale-[1.02] active:scale-98 text-left cursor-pointer flex flex-col justify-between min-h-[12rem] sm:col-span-2 lg:col-span-2"
               >
                 <div className="flex items-start justify-between">
                   <div className="p-3 bg-white/30 rounded-2xl backdrop-blur">
@@ -421,6 +460,63 @@ export const App: React.FC = () => {
         {/* ===================== SCREEN: MATH ===================== */}
         {currentScreen === "math" && (
           <VisualMathGame onEarnStar={handleEarnStar} onBackToHome={() => setCurrentScreen("home")} />
+        )}
+
+        {/* ===================== SCREEN: HIJAIYAH ===================== */}
+        {currentScreen === "hijaiyah" && (
+          <div className="space-y-4">
+            {/* Sub Tabs */}
+            <div className="flex justify-center gap-2 max-w-lg mx-auto p-1.5 bg-white/80 backdrop-blur rounded-2xl border border-emerald-200 shadow-sm">
+              <button
+                onClick={() => {
+                  sounds.playPop();
+                  setHijaiyahTab("letters");
+                }}
+                className={`flex-1 py-2.5 px-3 rounded-xl font-black text-xs sm:text-sm transition-all cursor-pointer ${
+                  hijaiyahTab === "letters"
+                    ? "bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-md scale-102"
+                    : "text-slate-600 hover:bg-emerald-50"
+                }`}
+              >
+                🌙 Huruf Hijaiyah
+              </button>
+              <button
+                onClick={() => {
+                  sounds.playPop();
+                  setHijaiyahTab("numbers");
+                }}
+                className={`flex-1 py-2.5 px-3 rounded-xl font-black text-xs sm:text-sm transition-all cursor-pointer ${
+                  hijaiyahTab === "numbers"
+                    ? "bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-md scale-102"
+                    : "text-slate-600 hover:bg-emerald-50"
+                }`}
+              >
+                🔢 Angka Arab
+              </button>
+              <button
+                onClick={() => {
+                  sounds.playPop();
+                  setHijaiyahTab("quiz");
+                }}
+                className={`flex-1 py-2.5 px-3 rounded-xl font-black text-xs sm:text-sm transition-all cursor-pointer ${
+                  hijaiyahTab === "quiz"
+                    ? "bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-md scale-102"
+                    : "text-slate-600 hover:bg-emerald-50"
+                }`}
+              >
+                🎯 Tebak Ceria
+              </button>
+            </div>
+
+            {/* Active Sub Mode */}
+            {hijaiyahTab === "letters" ? (
+              <HijaiyahExplorer />
+            ) : hijaiyahTab === "numbers" ? (
+              <ArabicNumberExplorer />
+            ) : (
+              <HijaiyahQuiz onEarnStar={handleEarnStar} onBackToHome={() => setCurrentScreen("home")} />
+            )}
+          </div>
         )}
       </main>
 

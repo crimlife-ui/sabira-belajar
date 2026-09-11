@@ -261,6 +261,14 @@ class SoundManager {
       // Audio safety
     }
   }
+
+  public playSuccess() {
+    this.playCorrectChime();
+  }
+
+  public playError() {
+    this.playGentleBoing();
+  }
 }
 
 export const sounds = new SoundManager();
