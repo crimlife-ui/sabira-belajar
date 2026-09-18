@@ -5,6 +5,7 @@ import { TopBar } from "./components/common/TopBar";
 import { ParentalModal } from "./components/common/ParentalModal";
 import { ProfileModal, UserProfile } from "./components/common/ProfileModal";
 import { LetterExplorer } from "./components/letters/LetterExplorer";
+import { VowelSyllableReader } from "./components/letters/VowelSyllableReader";
 import { SpellingGame } from "./components/letters/SpellingGame";
 import { SyllableSpellingGame } from "./components/letters/SyllableSpellingGame";
 import { BalloonSpellingGame } from "./components/letters/BalloonSpellingGame";
@@ -22,7 +23,7 @@ import { speech } from "./utils/speechHelper";
 import { STICKERS_LIST } from "./data/stickersData";
 
 type Screen = "home" | "letters" | "numbers" | "math" | "hijaiyah";
-type LetterMode = "explore" | "spelling" | "syllables" | "balloon";
+type LetterMode = "explore" | "vowels" | "spelling" | "syllables" | "balloon";
 type HijaiyahMode = "letters" | "reading" | "connected" | "numbers" | "quiz";
 
 export const App: React.FC = () => {
@@ -128,6 +129,8 @@ export const App: React.FC = () => {
       case "letters":
         return letterTab === "explore"
           ? "🔤 Mengenal Huruf A-Z"
+          : letterTab === "vowels"
+          ? "🗣️ Suku Kata (da-di-du / tak-tik-tuk)"
           : letterTab === "spelling"
           ? "🔤 Eja Huruf Kata"
           : letterTab === "syllables"
@@ -228,7 +231,7 @@ export const App: React.FC = () => {
                     <span>Huruf & Mengeja</span>
                   </h3>
                   <p className="text-white/85 text-sm font-medium mt-1">
-                    Alfabet A-Z, Eja Huruf, Eja Suku Kata, dan Game Balon Huruf Terbang 🎈.
+                    Alfabet A-Z, Suku Kata da-di-du & tak-tik-tuk, Eja Kata, dan Balon Huruf 🎈.
                   </p>
                 </div>
               </button>
@@ -352,14 +355,14 @@ export const App: React.FC = () => {
         {/* ===================== SCREEN: LETTERS ===================== */}
         {currentScreen === "letters" && (
           <div className="space-y-4">
-            {/* Sub Tabs: 4 Pilihan Menu */}
-            <div className="flex flex-wrap justify-center gap-2 max-w-2xl mx-auto p-1.5 bg-white/80 backdrop-blur rounded-2xl border border-pink-200 shadow-sm">
+            {/* Sub Tabs: 5 Pilihan Menu */}
+            <div className="flex flex-wrap justify-center gap-1.5 sm:gap-2 max-w-3xl mx-auto p-1.5 bg-white/80 backdrop-blur rounded-2xl border border-pink-200 shadow-sm">
               <button
                 onClick={() => {
                   sounds.playPop();
                   setLetterTab("explore");
                 }}
-                className={`flex-1 min-w-[6.5rem] py-2.5 px-2 rounded-xl font-black text-xs sm:text-sm transition-all cursor-pointer ${
+                className={`flex-1 min-w-[5.5rem] py-2.5 px-2 rounded-xl font-black text-xs sm:text-sm transition-all cursor-pointer ${
                   letterTab === "explore"
                     ? "bg-gradient-to-r from-pink-500 to-rose-500 text-white shadow-md scale-102"
                     : "text-slate-600 hover:bg-pink-50"
@@ -370,9 +373,22 @@ export const App: React.FC = () => {
               <button
                 onClick={() => {
                   sounds.playPop();
+                  setLetterTab("vowels");
+                }}
+                className={`flex-1 min-w-[5.5rem] py-2.5 px-2 rounded-xl font-black text-xs sm:text-sm transition-all cursor-pointer ${
+                  letterTab === "vowels"
+                    ? "bg-gradient-to-r from-pink-500 to-rose-500 text-white shadow-md scale-102"
+                    : "text-slate-600 hover:bg-pink-50"
+                }`}
+              >
+                Suku Kata 🗣️
+              </button>
+              <button
+                onClick={() => {
+                  sounds.playPop();
                   setLetterTab("spelling");
                 }}
-                className={`flex-1 min-w-[6.5rem] py-2.5 px-2 rounded-xl font-black text-xs sm:text-sm transition-all cursor-pointer ${
+                className={`flex-1 min-w-[5.5rem] py-2.5 px-2 rounded-xl font-black text-xs sm:text-sm transition-all cursor-pointer ${
                   letterTab === "spelling"
                     ? "bg-gradient-to-r from-pink-500 to-rose-500 text-white shadow-md scale-102"
                     : "text-slate-600 hover:bg-pink-50"
@@ -385,20 +401,20 @@ export const App: React.FC = () => {
                   sounds.playPop();
                   setLetterTab("syllables");
                 }}
-                className={`flex-1 min-w-[6.5rem] py-2.5 px-2 rounded-xl font-black text-xs sm:text-sm transition-all cursor-pointer ${
+                className={`flex-1 min-w-[5.5rem] py-2.5 px-2 rounded-xl font-black text-xs sm:text-sm transition-all cursor-pointer ${
                   letterTab === "syllables"
                     ? "bg-gradient-to-r from-pink-500 to-rose-500 text-white shadow-md scale-102"
                     : "text-slate-600 hover:bg-pink-50"
                 }`}
               >
-                Eja Suku Kata 🗣️
+                Eja Kata 🗣️
               </button>
               <button
                 onClick={() => {
                   sounds.playPop();
                   setLetterTab("balloon");
                 }}
-                className={`flex-1 min-w-[6.5rem] py-2.5 px-2 rounded-xl font-black text-xs sm:text-sm transition-all cursor-pointer ${
+                className={`flex-1 min-w-[5.5rem] py-2.5 px-2 rounded-xl font-black text-xs sm:text-sm transition-all cursor-pointer ${
                   letterTab === "balloon"
                     ? "bg-gradient-to-r from-pink-500 via-rose-500 to-red-500 text-white shadow-md scale-102"
                     : "text-slate-600 hover:bg-pink-50"
@@ -411,6 +427,8 @@ export const App: React.FC = () => {
             {/* Active Sub Mode */}
             {letterTab === "explore" ? (
               <LetterExplorer />
+            ) : letterTab === "vowels" ? (
+              <VowelSyllableReader />
             ) : letterTab === "spelling" ? (
               <SpellingGame onEarnStar={handleEarnStar} onBackToHome={() => setCurrentScreen("home")} />
             ) : letterTab === "syllables" ? (
