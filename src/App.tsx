@@ -20,6 +20,7 @@ import { HijaiyahQuiz } from "./components/hijaiyah/HijaiyahQuiz";
 import { StickerAlbum } from "./components/stickers/StickerAlbum";
 import { sounds } from "./utils/audioEffects";
 import { speech } from "./utils/speechHelper";
+import { wakeLockManager } from "./utils/wakeLock";
 import { STICKERS_LIST } from "./data/stickersData";
 
 type Screen = "home" | "letters" | "numbers" | "math" | "hijaiyah";
@@ -73,6 +74,14 @@ export const App: React.FC = () => {
     speech.setSpeechEnabled(soundEnabled);
     localStorage.setItem("sabira_sound", String(soundEnabled));
   }, [soundEnabled]);
+
+  // Keep screen awake while app is active
+  useEffect(() => {
+    const cleanup = wakeLockManager.init();
+    return () => {
+      cleanup();
+    };
+  }, []);
 
   const handleEarnStar = () => {
     setStars((prev) => {
