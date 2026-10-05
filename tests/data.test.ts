@@ -10,6 +10,11 @@ import {
   WORD_JOINING_EXAMPLES,
 } from "../src/data/hijaiyahReadingData";
 import { STICKERS_LIST } from "../src/data/stickersData";
+import {
+  READING_WORDS,
+  READING_SENTENCES,
+  SENTENCE_WORD_SYLLABLES,
+} from "../src/data/readingData";
 
 describe("ALPHABET_LIST", () => {
   it("memuat 26 huruf A-Z tanpa duplikat", () => {
@@ -144,5 +149,41 @@ describe("STICKERS_LIST", () => {
 
   it("stiker pertama gratis (0 bintang)", () => {
     expect(STICKERS_LIST[0].requiredStars).toBe(0);
+  });
+});
+
+describe("READING_WORDS", () => {
+  it("memuat variasi 2-4 suku kata tanpa kata duplikat", () => {
+    const syllableCounts = new Set(READING_WORDS.map((w) => w.syllables.length));
+    expect(syllableCounts.has(2)).toBe(true);
+    expect(syllableCounts.has(3)).toBe(true);
+    expect(syllableCounts.has(4)).toBe(true);
+    for (const w of READING_WORDS) {
+      expect(w.syllables.join("").toLowerCase()).toBe(w.word.toLowerCase().replace(/-/g, ""));
+      expect(w.emoji.length).toBeGreaterThan(0);
+    }
+    const words = READING_WORDS.map((w) => w.word.toLowerCase());
+    expect(new Set(words).size).toBe(words.length);
+  });
+});
+
+describe("READING_SENTENCES", () => {
+  it("kalimat terdiri dari 3-4 kata", () => {
+    for (const s of READING_SENTENCES) {
+      const wordCount = s.text.replace(".", "").split(" ").length;
+      expect(wordCount).toBeGreaterThanOrEqual(3);
+      expect(wordCount).toBeLessThanOrEqual(4);
+    }
+  });
+
+  it("setiap kata kalimat punya pecahan suku kata yang konsisten", () => {
+    for (const s of READING_SENTENCES) {
+      const words = s.text.replace(".", "").split(" ");
+      for (const w of words) {
+        const syl = SENTENCE_WORD_SYLLABLES[w.toLowerCase()];
+        expect(syl).toBeDefined();
+        expect(syl.join("").toLowerCase()).toBe(w.toLowerCase().replace(/-/g, ""));
+      }
+    }
   });
 });

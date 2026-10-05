@@ -7,10 +7,11 @@ import {
   BookOpen,
   MessageSquareText,
   Target,
+  RotateCcw,
 } from "lucide-react";
 import { sounds } from "../../utils/audioEffects";
 import { speech } from "../../utils/speechHelper";
-import { READING_WORDS, READING_SENTENCES } from "../../data/readingData";
+import { READING_WORDS, READING_SENTENCES, getWordSyllables } from "../../data/readingData";
 import { trackAnswer, trackSessionComplete } from "../../utils/statsTracker";
 import { SessionCompleteModal } from "../common/SessionCompleteModal";
 
@@ -175,21 +176,63 @@ const WordReader: React.FC = () => {
 };
 
 // ==================== TAB 2: BACA KALIMAT ====================
+// Alur: anak mengeja kata-per-kata (suku kata berurutan), kata yang selesai
+// dieja tampil UTUH di strip kalimat, hingga akhirnya menjadi kalimat penuh.
 const SentenceReader: React.FC = () => {
   const [order] = useState<number[]>(() => shuffleIndices(READING_SENTENCES.length));
   const [step, setStep] = useState(0);
+  const [wordIdx, setWordIdx] = useState(0);
+  const [ejaProgress, setEjaProgress] = useState(0);
+  const [sentenceDone, setSentenceDone] = useState(false);
 
-  const item = READING_SENTENCES[order[step]];
-  const words = item.text.replace(".", "").split(" ");
+  const sentence = READING_SENTENCES[order[step]];
+  const words = sentence.text.replace(".", "").split(" ");
+  const syllablesOf = (w: string) => getWordSyllables(w.toLowerCase());
 
-  const handleSpeakSentence = () => {
-    sounds.playPop();
-    speech.speak(item.text, 0.8, 1.1);
+  const currentWord = words[wordIdx];
+  const currentSyllables = syllablesOf(currentWord);
+  const completedCount = sentenceDone ? words.length : wordIdx;
+
+  const reset = () => {
+    setWordIdx(0);
+    setEjaProgress(0);
+    setSentenceDone(false);
   };
 
-  const handleSpeakWord = (w: string) => {
+  const handleNextSentence = () => {
     sounds.playPop();
-    speech.speak(w, 0.75, 1.2);
+    setStep((s) => (s + 1) % order.length);
+    reset();
+  };
+
+  const completeWord = () => {
+    sounds.playCorrectChime();
+    speech.speak(`${currentSyllables.join("... ")}. ${currentWord}!`, 0.8, 1.15);
+    const next = wordIdx + 1;
+    if (next >= words.length) {
+      setSentenceDone(true);
+      confetti({ particleCount: 70, spread: 80, origin: { y: 0.5 } });
+      window.setTimeout(() => speech.speak(sentence.text, 0.8, 1.1), 1400);
+    } else {
+      setWordIdx(next);
+      setEjaProgress(0);
+    }
+  };
+
+  const handleTapSyllable = (idx: number) => {
+    if (sentenceDone) return;
+    if (idx === ejaProgress) {
+      sounds.playPop();
+      speech.speak(currentSyllables[idx], 0.75, 1.2);
+      const next = ejaProgress + 1;
+      setEjaProgress(next);
+      if (next >= currentSyllables.length) {
+        window.setTimeout(completeWord, 550);
+      }
+    } else {
+      // Bukan suku kata berikutnya: dorongan lembut, tanpa penalti
+      sounds.playGentleBoing();
+    }
   };
 
   return (
@@ -198,58 +241,147 @@ const SentenceReader: React.FC = () => {
         <span className="flex items-center gap-1.5 text-violet-600">
           <MessageSquareText className="w-4 h-4" /> Kalimat {step + 1} dari {order.length}
         </span>
-        <span>Sentuh kata untuk dengar!</span>
+        <span>
+          {sentenceDone
+            ? "Kalimat selesai! 🎉"
+            : `Kata ${wordIdx + 1}/${words.length} • eja suku katanya!`}
+        </span>
       </div>
 
-      <div className="bg-white/95 rounded-3xl border-4 border-violet-200 shadow-lg p-6 sm:p-8 text-center space-y-5">
-        <div className="text-7xl select-none">{item.emoji}</div>
-
-        {/* Kata per kata, bisa disentuh */}
-        <div className="flex flex-wrap justify-center gap-2">
-          {words.map((w, i) => (
-            <button
-              key={i}
-              onClick={() => handleSpeakWord(w)}
-              className="px-3.5 py-2 bg-violet-50 hover:bg-violet-100 border-2 border-violet-200 rounded-xl font-black text-2xl sm:text-3xl text-slate-800 cursor-pointer active:scale-95 transition-all"
-            >
-              {w}
-            </button>
-          ))}
+      {/* Strip kalimat: kata selesai-eja tampil utuh di sini */}
+      <div className="bg-white/95 rounded-3xl border-4 border-violet-200 shadow-lg p-5 text-center">
+        <div className="text-5xl mb-3 select-none">{sentence.emoji}</div>
+        <div className="flex flex-wrap justify-center items-center gap-2 min-h-[3rem]">
+          {words.map((w, i) => {
+            if (i < completedCount) {
+              return (
+                <button
+                  key={i}
+                  onClick={() => {
+                    sounds.playPop();
+                    speech.speak(w, 0.8, 1.15);
+                  }}
+                  className="px-3 py-1.5 bg-emerald-50 border-2 border-emerald-400 rounded-xl font-black text-xl sm:text-2xl text-emerald-700 cursor-pointer active:scale-95 transition-all"
+                  title="Kata yang sudah kamu eja!"
+                >
+                  {w}
+                </button>
+              );
+            }
+            if (i === completedCount && !sentenceDone) {
+              return (
+                <span
+                  key={i}
+                  className="px-3 py-1.5 border-2 border-dashed border-violet-400 bg-violet-50/60 rounded-xl font-black text-xl sm:text-2xl text-violet-300 animate-pulse"
+                >
+                  {w}
+                </span>
+              );
+            }
+            return (
+              <span
+                key={i}
+                className="px-3 py-1.5 border-2 border-dashed border-slate-200 rounded-xl font-black text-xl text-slate-200"
+              >
+                {w}
+              </span>
+            );
+          })}
         </div>
-
-        <p className="text-2xl sm:text-3xl font-black text-violet-700">{item.text}</p>
-
-        <button
-          onClick={handleSpeakSentence}
-          className="mx-auto px-6 py-3 bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 text-white font-black rounded-2xl shadow-md flex items-center gap-2 active:scale-95 transition-all cursor-pointer"
-        >
-          <Volume2 className="w-5 h-5" />
-          <span>Dengarkan Kalimatnya</span>
-        </button>
       </div>
 
-      <div className="flex justify-center gap-3">
-        <button
-          onClick={() => {
-            sounds.playPop();
-            setStep((s) => (s - 1 + order.length) % order.length);
-          }}
-          className="px-5 py-3 bg-white hover:bg-slate-50 text-slate-700 font-black rounded-2xl border-2 border-slate-200 shadow-md flex items-center gap-1.5 cursor-pointer active:scale-95 transition-all"
-        >
-          <ChevronLeft className="w-5 h-5" />
-          <span>Mundur</span>
-        </button>
-        <button
-          onClick={() => {
-            sounds.playPop();
-            setStep((s) => (s + 1) % order.length);
-          }}
-          className="px-5 py-3 bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 text-white font-black rounded-2xl shadow-md flex items-center gap-1.5 cursor-pointer active:scale-95 transition-all"
-        >
-          <span>Kalimat Berikutnya</span>
-          <ChevronRight className="w-5 h-5" />
-        </button>
-      </div>
+      {sentenceDone ? (
+        /* Kalimat utuh selesai */
+        <div className="bg-gradient-to-br from-emerald-50 to-teal-50 rounded-3xl border-4 border-emerald-300 shadow-lg p-6 text-center space-y-4">
+          <p className="text-sm font-black text-emerald-600">
+            Hebat! Kamu berhasil mengeja seluruh kalimat! 🎉
+          </p>
+          <p className="text-3xl sm:text-4xl font-black text-slate-800 leading-snug">
+            {sentence.text}
+          </p>
+          <button
+            onClick={() => {
+              sounds.playPop();
+              speech.speak(sentence.text, 0.8, 1.1);
+            }}
+            className="mx-auto px-6 py-3 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-black rounded-2xl shadow-md flex items-center gap-2 active:scale-95 transition-all cursor-pointer"
+          >
+            <Volume2 className="w-5 h-5" />
+            <span>Dengarkan Kalimatnya</span>
+          </button>
+          <div className="flex justify-center gap-3">
+            <button
+              onClick={() => {
+                sounds.playPop();
+                reset();
+              }}
+              className="px-5 py-3 bg-white hover:bg-slate-50 text-slate-700 font-black rounded-2xl border-2 border-slate-200 shadow-md flex items-center gap-1.5 cursor-pointer active:scale-95 transition-all"
+            >
+              <RotateCcw className="w-4 h-4" />
+              <span>Ulangi</span>
+            </button>
+            <button
+              onClick={handleNextSentence}
+              className="px-5 py-3 bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 text-white font-black rounded-2xl shadow-md flex items-center gap-1.5 cursor-pointer active:scale-95 transition-all"
+            >
+              <span>Kalimat Berikutnya</span>
+              <ChevronRight className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+      ) : (
+        /* Kartu eja kata aktif */
+        <div className="bg-white/95 rounded-3xl border-4 border-violet-200 shadow-lg p-6 text-center space-y-4">
+          <p className="text-sm font-bold text-slate-500">
+            Eja kata ini: sentuh suku katanya <span className="text-violet-500">berurutan</span>!
+          </p>
+
+          {/* Chip suku kata kata aktif */}
+          <div className="flex flex-wrap justify-center gap-2 sm:gap-3">
+            {currentSyllables.map((syl, i) => {
+              const isFilled = i < ejaProgress;
+              const isNext = i === ejaProgress;
+              return (
+                <button
+                  key={i}
+                  onClick={() => handleTapSyllable(i)}
+                  className={`px-4 sm:px-6 py-3 rounded-2xl font-black text-3xl sm:text-4xl border-2 shadow-sm active:scale-95 transition-all ${
+                    isFilled
+                      ? "bg-emerald-100 border-emerald-400 text-emerald-700"
+                      : isNext
+                      ? "bg-gradient-to-br from-violet-100 to-purple-100 border-violet-400 text-violet-700 animate-pulse cursor-pointer"
+                      : "bg-slate-50 border-slate-200 text-slate-400 cursor-pointer hover:bg-violet-50"
+                  }`}
+                >
+                  {syl}
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="flex items-center justify-center gap-3">
+            <button
+              onClick={() => {
+                sounds.playPop();
+                speech.speak(`${currentSyllables.join("... ")}. ${currentWord}!`, 0.8, 1.15);
+              }}
+              className="px-4 py-2 bg-violet-50 hover:bg-violet-100 text-violet-700 font-black rounded-xl border-2 border-violet-200 text-xs flex items-center gap-1.5 cursor-pointer active:scale-95 transition-all"
+            >
+              <Volume2 className="w-4 h-4" />
+              <span>Contoh Bunyi Kata</span>
+            </button>
+            <button
+              onClick={() => {
+                sounds.playPop();
+                completeWord();
+              }}
+              className="px-4 py-2 bg-white hover:bg-slate-50 text-slate-500 font-black rounded-xl border-2 border-slate-200 text-xs cursor-pointer active:scale-95 transition-all"
+            >
+              Lewati Kata →
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
