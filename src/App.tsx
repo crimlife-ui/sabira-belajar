@@ -30,6 +30,7 @@ import { HijaiyahReadingPractice } from "./components/hijaiyah/HijaiyahReadingPr
 import { HijaiyahConnectedLetters } from "./components/hijaiyah/HijaiyahConnectedLetters";
 import { ArabicNumberExplorer } from "./components/hijaiyah/ArabicNumberExplorer";
 import { HijaiyahQuiz } from "./components/hijaiyah/HijaiyahQuiz";
+import { BelajarMembaca } from "./components/reading/BelajarMembaca";
 import { StickerAlbum } from "./components/stickers/StickerAlbum";
 import { sounds } from "./utils/audioEffects";
 import { speech } from "./utils/speechHelper";
@@ -45,7 +46,7 @@ import { loadStats } from "./utils/statsTracker";
 import { music, MusicStyle } from "./utils/backgroundMusic";
 import { STICKERS_LIST } from "./data/stickersData";
 
-type Screen = "home" | "letters" | "numbers" | "math" | "hijaiyah";
+type Screen = "home" | "letters" | "numbers" | "math" | "hijaiyah" | "reading";
 type LetterMode = "explore" | "tracing" | "vowels" | "spelling" | "syllables" | "balloon";
 type HijaiyahMode = "letters" | "reading" | "connected" | "numbers" | "quiz";
 
@@ -293,6 +294,8 @@ export const App: React.FC = () => {
           : "🔢 Menghitung Benda";
       case "math":
         return "➕➖ Matematika Ceria";
+      case "reading":
+        return "📖 Belajar Membaca";
       case "hijaiyah":
         return hijaiyahTab === "letters"
           ? "🌙 Mengenal Huruf Hijaiyah"
@@ -389,7 +392,34 @@ export const App: React.FC = () => {
                 </div>
               </button>
 
-              {/* Card 2: Huruf Hijaiyah & Angka Arab */}
+              {/* Card 2: Belajar Membaca */}
+              <button
+                onClick={() => {
+                  sounds.playPop();
+                  speech.speak("Ayo belajar membaca kata dan kalimat!", 0.9, 1.15);
+                  setCurrentScreen("reading");
+                }}
+                className="group relative overflow-hidden p-6 rounded-3xl bg-gradient-to-br from-violet-500 to-purple-600 text-white shadow-xl border-4 border-violet-300/60 hover:border-white transition-all duration-300 hover:scale-[1.02] active:scale-98 text-left cursor-pointer flex flex-col justify-between min-h-[12rem]"
+              >
+                <div className="flex items-start justify-between">
+                  <div className="p-3 bg-white/20 rounded-2xl backdrop-blur">
+                    <BookOpen className="w-8 h-8 text-white" />
+                  </div>
+                  <span className="text-4xl group-hover:scale-125 transition-transform">
+                    📖
+                  </span>
+                </div>
+                <div className="mt-4">
+                  <h3 className="text-2xl font-black tracking-wide flex items-center gap-2">
+                    <span>Belajar Membaca</span>
+                  </h3>
+                  <p className="text-white/85 text-sm font-medium mt-1">
+                    Baca kata per suku kata, kalimat sederhana, dan tebak gambar!
+                  </p>
+                </div>
+              </button>
+
+              {/* Card 3: Huruf Hijaiyah & Angka Arab */}
               <button
                 onClick={() => {
                   sounds.playPop();
@@ -605,6 +635,14 @@ export const App: React.FC = () => {
               <BalloonSpellingGame onEarnStar={handleEarnStar} onBackToHome={() => setCurrentScreen("home")} />
             )}
           </div>
+        )}
+
+        {/* ===================== SCREEN: READING ===================== */}
+        {currentScreen === "reading" && (
+          <BelajarMembaca
+            onEarnStar={handleEarnStar}
+            onBackToHome={() => setCurrentScreen("home")}
+          />
         )}
 
         {/* ===================== SCREEN: NUMBERS ===================== */}

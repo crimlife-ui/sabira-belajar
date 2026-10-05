@@ -9,7 +9,8 @@ export type StatsModule =
   | "balloon"
   | "counting"
   | "math"
-  | "hijaiyahQuiz";
+  | "hijaiyahQuiz"
+  | "reading";
 
 export interface ModuleStat {
   answered: number;

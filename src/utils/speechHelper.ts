@@ -35,6 +35,16 @@ class SpeechHelper {
         if (speechSynthesis.onvoiceschanged !== undefined) {
           speechSynthesis.onvoiceschanged = () => this.initVoices();
         }
+        // Beberapa browser (mis. Android Chrome) mengisi daftar voice terlambat
+        // dan tidak selalu memicu onvoiceschanged — polling ringan sebagai jaring aman.
+        let attempts = 0;
+        const tryLoad = () => {
+          if (this.voice || attempts >= 10) return;
+          attempts++;
+          this.initVoices();
+          if (!this.voice) window.setTimeout(tryLoad, 400);
+        };
+        if (!this.voice) window.setTimeout(tryLoad, 400);
       }
     }
   }
@@ -122,12 +132,20 @@ class SpeechHelper {
     if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
 
     try {
-      window.speechSynthesis.cancel(); // Stop previous voice
+      // iOS Safari: cancel() tepat sebelum speak() membuat ucapan gulir
+      // selamanya. Hanya batalkan bila memang sedang ada yang bersuara.
+      if (window.speechSynthesis.speaking || window.speechSynthesis.pending) {
+        window.speechSynthesis.cancel();
+      }
       const utterance = new SpeechSynthesisUtterance(text);
       if (this.voice) {
         utterance.voice = this.voice;
+        // Samakan lang dengan voice terpilih. Memaksa "id-ID" di atas voice
+        // non-Indonesia membuat Chrome di sebagian perangkat diam total.
+        utterance.lang = this.voice.lang || "id-ID";
+      } else {
+        utterance.lang = "id-ID";
       }
-      utterance.lang = "id-ID";
 
       const persona = this.getCurrentPersona();
       utterance.rate = customRate ?? persona.rate;

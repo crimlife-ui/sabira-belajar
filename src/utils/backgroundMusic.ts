@@ -18,6 +18,7 @@ class BackgroundMusicManager {
   private style: MusicStyle = "lullaby";
   private beatIndex = 0;
   private nextBeatTime = 0;
+  private unlockAttached = false;
 
   // Progresi & melodi yang sama dipakai kedua gaya (16 ketukan = 4 bar)
   private static readonly MELODY: number[][] = [
@@ -48,6 +49,22 @@ class BackgroundMusicManager {
     if (this.master && this.ctx) {
       this.master.gain.setTargetAtTime(this.volume * 0.5, this.ctx.currentTime, 0.1);
     }
+  }
+
+  // iOS/Safari hanya mengizinkan AudioContext.resume() dari DALAM sentuhan
+  // pengguna — resume dari efek React atau interval tidak pernah berhasil.
+  // Pendengar ini melekat sekali dan mencoba membuka kunci di setiap tap.
+  private attachUnlockListener(): void {
+    if (this.unlockAttached || typeof document === "undefined") return;
+    this.unlockAttached = true;
+    const unlock = () => {
+      if (this.enabled && this.ctx && this.ctx.state === "suspended") {
+        this.ctx.resume().catch(() => {});
+      }
+    };
+    document.addEventListener("pointerdown", unlock, { passive: true });
+    document.addEventListener("touchend", unlock, { passive: true });
+    document.addEventListener("keydown", unlock);
   }
 
   setStyle(style: MusicStyle): void {
@@ -91,7 +108,9 @@ class BackgroundMusicManager {
       this.tone.connect(this.master);
       this.master.connect(this.ctx.destination);
     }
-    // Browser mengunci audio sampai ada interaksi; scheduler mencoba resume tiap tick.
+    this.attachUnlockListener();
+    // Browser mengunci audio sampai ada interaksi; unlock listener + scheduler
+    // mencoba resume pada setiap sentuhan dan tick.
     this.ctx.resume().catch(() => {});
     if (this.timer === null) {
       this.beatIndex = 0;
@@ -119,6 +138,11 @@ class BackgroundMusicManager {
     }
     const now = this.ctx.currentTime;
     const beat = this.beatDur;
+    // Konteks yang tadinya ditangguhkan melompat maju waktunya begitu jalan —
+    // resinkron agar tidak menjadwalkan ratusan nada telat sekaligus (bunyi kasar).
+    if (this.nextBeatTime < now) {
+      this.nextBeatTime = now + 0.05;
+    }
     while (this.nextBeatTime < now + 0.8) {
       const pos = this.beatIndex % 16;
       const bar = Math.floor(pos / 4);
