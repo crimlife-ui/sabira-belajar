@@ -84,7 +84,9 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
 
   const handleSwitch = (profile: UserProfile) => {
     if (profile.id === activeProfile?.id) {
-      openForm("edit", profile);
+      // Tap kartu sendiri: lanjut main sebagai profil ini
+      sounds.playPop();
+      onClose?.();
       return;
     }
     sounds.playPop();
