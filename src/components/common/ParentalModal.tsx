@@ -359,7 +359,13 @@ export const ParentalModal: React.FC<ParentalModalProps> = ({
               )}
             </div>
 
-            {/* Batas Waktu Belajar Harian */}
+              <p className="text-[11px] font-semibold text-violet-700/80">
+                Browser butuh satu sentuhan di layar untuk mengizinkan audio. Jika musik
+                belum terdengar setelah diaktifkan, sentuh layar sekali — musik akan
+                langsung mengalun.
+              </p>
+
+              {/* Batas Waktu Belajar Harian */}
             <div className="space-y-2.5 p-4 bg-amber-50/70 rounded-2xl border-2 border-amber-200">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 text-amber-900 font-black text-sm">
