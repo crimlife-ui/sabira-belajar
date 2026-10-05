@@ -286,7 +286,7 @@ export const ParentalModal: React.FC<ParentalModalProps> = ({
                   <Music className="w-6 h-6 text-violet-600" />
                   <div>
                     <p className="font-bold text-slate-800 text-sm">Musik Latar</p>
-                    <p className="text-xs text-slate-500">Nada kotak musik yang menenangkan</p>
+                    <p className="text-xs text-slate-500">Melodi lembut ala lagu pengantar tidur</p>
                   </div>
                 </div>
                 <button
