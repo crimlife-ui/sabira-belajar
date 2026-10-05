@@ -182,14 +182,16 @@ const WordReader: React.FC = () => {
 };
 
 // ==================== TAB 2: BACA KALIMAT ====================
-// Alur: anak mengeja HURUF-per-huruf (digraf ng/ny/sy/kh = satu unit),
-// kata yang selesai dieja tampil UTUH di strip kalimat, hingga menjadi
-// kalimat penuh — anak belajar huruf pembentuk kata + membaca sekaligus.
+// Alur (mengikuti mekanik Eja Kata/SyllableSpellingGame):
+// kata dipecah per suku kata -> suku kata aktif dieja HURUF demi huruf
+// (digraf ng/ny/sy/kh = satu unit) -> selesai suku kata dibunyikan
+// ("b-u dibaca bu!") -> kata tampil UTUH di strip -> kalimat penuh.
 const SentenceReader: React.FC = () => {
   const [order] = useState<number[]>(() => shuffleIndices(READING_SENTENCES.length));
   const [step, setStep] = useState(0);
   const [wordIdx, setWordIdx] = useState(0);
-  const [ejaProgress, setEjaProgress] = useState(0);
+  const [sylIdx, setSylIdx] = useState(0); // suku kata aktif dalam kata
+  const [ejaProgress, setEjaProgress] = useState(0); // huruf ke- dalam suku kata aktif
   const [sentenceDone, setSentenceDone] = useState(false);
 
   const sentence = READING_SENTENCES[order[step]];
@@ -198,11 +200,16 @@ const SentenceReader: React.FC = () => {
 
   const currentWord = words[wordIdx];
   const currentSyllables = syllablesOf(currentWord);
-  const letterUnits = getLetterUnits(currentWord);
+  const activeSyllable = currentSyllables[sylIdx] ?? "";
+  const activeLetters = getLetterUnits(activeSyllable);
+  const expectedLetter = activeLetters[ejaProgress] ?? "";
   const completedCount = sentenceDone ? words.length : wordIdx;
+
+  const ORDINALS = ["pertama", "kedua", "ketiga", "keempat"];
 
   const reset = () => {
     setWordIdx(0);
+    setSylIdx(0);
     setEjaProgress(0);
     setSentenceDone(false);
   };
@@ -214,33 +221,68 @@ const SentenceReader: React.FC = () => {
   };
 
   const completeWord = () => {
-    sounds.playCorrectChime();
-    speech.speak(`${currentSyllables.join("... ")}. ${currentWord}!`, 0.8, 1.15);
+    sounds.playFanfare();
+    speech.speak(`${currentWord}! Hebat!`, 0.85, 1.15);
     const next = wordIdx + 1;
     if (next >= words.length) {
       setSentenceDone(true);
       confetti({ particleCount: 70, spread: 80, origin: { y: 0.5 } });
       window.setTimeout(() => speech.speak(sentence.text, 0.8, 1.1), 1400);
     } else {
+      const nextWord = words[next];
+      const firstSyl = syllablesOf(nextWord)[0];
       setWordIdx(next);
+      setSylIdx(0);
       setEjaProgress(0);
+      window.setTimeout(() => {
+        speech.speak(
+          `Ayo eja kata ${nextWord}. Suku kata pertama: ${firstSyl}!`,
+          0.85,
+          1.15
+        );
+      }, 1500);
     }
   };
 
-  const handleTapLetter = (idx: number) => {
-    if (sentenceDone) return;
-    if (idx === ejaProgress) {
-      sounds.playPop();
-      speech.speak(getLetterName(letterUnits[idx]), 0.75, 1.2);
-      const next = ejaProgress + 1;
-      setEjaProgress(next);
-      if (next >= letterUnits.length) {
-        window.setTimeout(completeWord, 550);
-      }
+  const completeSyllable = () => {
+    sounds.playCorrectChime();
+    speech.speak(`${activeLetters.join("-")} dibaca ${activeSyllable}!`, 0.8, 1.15);
+    const nextSyl = sylIdx + 1;
+    if (nextSyl >= currentSyllables.length) {
+      // Semua suku kata kata ini selesai dieja
+      window.setTimeout(completeWord, 1100);
     } else {
-      // Bukan huruf berikutnya: dorongan lembut, tanpa penalti
-      sounds.playGentleBoing();
+      const nextSylText = currentSyllables[nextSyl];
+      setSylIdx(nextSyl);
+      setEjaProgress(0);
+      window.setTimeout(() => {
+        speech.speak(
+          `Sekarang suku kata ${ORDINALS[nextSyl] ?? "berikutnya"}: ${nextSylText}!`,
+          0.85,
+          1.15
+        );
+      }, 1300);
     }
+  };
+
+  const handleTapLetter = () => {
+    if (sentenceDone) return;
+    sounds.playPop();
+    speech.speak(getLetterName(expectedLetter), 0.75, 1.2);
+    const next = ejaProgress + 1;
+    setEjaProgress(next);
+    if (next >= activeLetters.length) {
+      window.setTimeout(completeSyllable, 550);
+    }
+  };
+
+  const handleWrongLetter = () => {
+    sounds.playGentleBoing();
+    speech.speak(
+      `Huruf untuk suku kata ${activeSyllable} sekarang adalah ${getLetterName(expectedLetter)} ya!`,
+      0.85,
+      1.15
+    );
   };
 
   return (
@@ -252,7 +294,7 @@ const SentenceReader: React.FC = () => {
         <span>
           {sentenceDone
             ? "Kalimat selesai! 🎉"
-            : `Kata ${wordIdx + 1}/${words.length} • eja hurufnya!`}
+            : `Kata ${wordIdx + 1}/${words.length} • eja per suku kata!`}
         </span>
       </div>
 
@@ -338,28 +380,72 @@ const SentenceReader: React.FC = () => {
           </div>
         </div>
       ) : (
-        /* Kartu eja huruf kata aktif */
+        /* Kartu eja kata aktif: suku kata dieja huruf demi huruf */
         <div className="bg-white/95 rounded-3xl border-4 border-violet-200 shadow-lg p-6 text-center space-y-4">
           <p className="text-sm font-bold text-slate-500">
-            Eja kata <span className="font-black text-slate-700">{currentWord}</span>: sentuh{" "}
-            <span className="text-violet-500">hurufnya berurutan</span>!
+            Eja kata{" "}
+            <span className="font-black text-slate-700">{currentWord}</span> — suku kata{" "}
+            <span className="font-black text-violet-600">{ORDINALS[sylIdx] ?? "berikutnya"}</span>:
+            sentuh hurufnya <span className="text-violet-500">berurutan</span>!
           </p>
 
-          {/* Chip huruf kata aktif */}
+          {/* Progres suku kata kata aktif */}
+          <div className="flex flex-wrap justify-center items-center gap-2">
+            {currentSyllables.map((syl, j) => {
+              if (j < sylIdx) {
+                return (
+                  <span
+                    key={j}
+                    className="px-3 py-1.5 bg-emerald-100 border-2 border-emerald-400 rounded-xl font-black text-2xl sm:text-3xl text-emerald-700"
+                    title="Suku kata selesai dieja"
+                  >
+                    {syl}
+                  </span>
+                );
+              }
+              if (j === sylIdx) {
+                return (
+                  <span
+                    key={j}
+                    className="px-3 py-1.5 bg-violet-50 border-2 border-violet-400 rounded-xl font-black text-2xl sm:text-3xl text-violet-500 animate-pulse"
+                    title="Suku kata sedang dieja"
+                  >
+                    {activeLetters.slice(0, ejaProgress).join("") || "?"}
+                  </span>
+                );
+              }
+              return (
+                <span
+                  key={j}
+                  className="px-3 py-1.5 border-2 border-dashed border-slate-200 rounded-xl font-black text-2xl text-slate-200"
+                >
+                  {syl}
+                </span>
+              );
+            })}
+          </div>
+
+          {/* Chip huruf suku kata aktif */}
           <div className="flex flex-wrap justify-center gap-1.5 sm:gap-2">
-            {letterUnits.map((unit, i) => {
+            {activeLetters.map((unit, i) => {
               const isFilled = i < ejaProgress;
               const isNext = i === ejaProgress;
               return (
                 <button
                   key={i}
-                  onClick={() => handleTapLetter(i)}
+                  onClick={() => {
+                    if (isNext) {
+                      handleTapLetter();
+                    } else if (!isFilled) {
+                      handleWrongLetter();
+                    }
+                  }}
                   className={`px-3 sm:px-3.5 py-2.5 rounded-xl font-black text-2xl sm:text-3xl border-2 shadow-sm active:scale-95 transition-all ${
                     isFilled
                       ? "bg-emerald-100 border-emerald-400 text-emerald-700"
                       : isNext
                       ? "bg-gradient-to-br from-violet-100 to-purple-100 border-violet-400 text-violet-700 animate-pulse cursor-pointer"
-                      : "bg-slate-50 border-slate-200 text-slate-400 cursor-pointer hover:bg-violet-50"
+                      : "bg-slate-50 border-slate-200 text-slate-400 cursor-pointer hover:bg-rose-50"
                   }`}
                 >
                   {unit}
@@ -373,7 +459,9 @@ const SentenceReader: React.FC = () => {
               onClick={() => {
                 sounds.playPop();
                 speech.speak(
-                  `${letterUnits.map(getLetterName).join("... ")}. ${currentSyllables.join("... ")}. ${currentWord}!`,
+                  `${currentSyllables
+                    .map((s) => `${getLetterUnits(s).map(getLetterName).join("-")} dibaca ${s}`)
+                    .join(", ")}. ${currentWord}!`,
                   0.75,
                   1.15
                 );
