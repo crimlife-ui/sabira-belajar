@@ -16,6 +16,7 @@ import {
   removeStars,
 } from "./utils/profileStore";
 import { LetterExplorer } from "./components/letters/LetterExplorer";
+import { TracingGame } from "./components/letters/TracingGame";
 import { VowelSyllableReader } from "./components/letters/VowelSyllableReader";
 import { SpellingGame } from "./components/letters/SpellingGame";
 import { SyllableSpellingGame } from "./components/letters/SyllableSpellingGame";
@@ -35,13 +36,13 @@ import { wakeLockManager } from "./utils/wakeLock";
 import { STICKERS_LIST } from "./data/stickersData";
 
 type Screen = "home" | "letters" | "numbers" | "math" | "hijaiyah";
-type LetterMode = "explore" | "vowels" | "spelling" | "syllables" | "balloon";
+type LetterMode = "explore" | "tracing" | "vowels" | "spelling" | "syllables" | "balloon";
 type HijaiyahMode = "letters" | "reading" | "connected" | "numbers" | "quiz";
 
 export const App: React.FC = () => {
   const [currentScreen, setCurrentScreen] = useState<Screen>("home");
   const [letterTab, setLetterTab] = useState<LetterMode>("explore");
-  const [numberTab, setNumberTab] = useState<"explore" | "counting">("explore");
+  const [numberTab, setNumberTab] = useState<"explore" | "tracing" | "counting">("explore");
   const [hijaiyahTab, setHijaiyahTab] = useState<HijaiyahMode>("letters");
 
   // Profile management (multi-anak, migrasi data lama otomatis)
@@ -177,6 +178,8 @@ export const App: React.FC = () => {
       case "letters":
         return letterTab === "explore"
           ? "🔤 Mengenal Huruf A-Z"
+          : letterTab === "tracing"
+          ? "✍️ Jiplak Huruf A-Z"
           : letterTab === "vowels"
           ? "🗣️ Suku Kata (da-di-du / tak-tik-tuk)"
           : letterTab === "spelling"
@@ -185,7 +188,11 @@ export const App: React.FC = () => {
           ? "🗣️ Eja Suku Kata"
           : "🎈 Balon Huruf";
       case "numbers":
-        return numberTab === "explore" ? "🔢 Mengenal Angka 0-20" : "🔢 Menghitung Benda";
+        return numberTab === "explore"
+          ? "🔢 Mengenal Angka 0-20"
+          : numberTab === "tracing"
+          ? "✍️ Jiplak Angka 0-9"
+          : "🔢 Menghitung Benda";
       case "math":
         return "➕➖ Matematika Ceria";
       case "hijaiyah":
@@ -421,6 +428,19 @@ export const App: React.FC = () => {
               <button
                 onClick={() => {
                   sounds.playPop();
+                  setLetterTab("tracing");
+                }}
+                className={`flex-1 min-w-[5.5rem] py-2.5 px-2 rounded-xl font-black text-xs sm:text-sm transition-all cursor-pointer ${
+                  letterTab === "tracing"
+                    ? "bg-gradient-to-r from-pink-500 to-rose-500 text-white shadow-md scale-102"
+                    : "text-slate-600 hover:bg-pink-50"
+                }`}
+              >
+                Jiplak ✍️
+              </button>
+              <button
+                onClick={() => {
+                  sounds.playPop();
                   setLetterTab("vowels");
                 }}
                 className={`flex-1 min-w-[5.5rem] py-2.5 px-2 rounded-xl font-black text-xs sm:text-sm transition-all cursor-pointer ${
@@ -475,6 +495,8 @@ export const App: React.FC = () => {
             {/* Active Sub Mode */}
             {letterTab === "explore" ? (
               <LetterExplorer />
+            ) : letterTab === "tracing" ? (
+              <TracingGame charset="letters" onEarnStar={handleEarnStar} />
             ) : letterTab === "vowels" ? (
               <VowelSyllableReader />
             ) : letterTab === "spelling" ? (
@@ -491,7 +513,7 @@ export const App: React.FC = () => {
         {currentScreen === "numbers" && (
           <div className="space-y-4">
             {/* Sub Tabs */}
-            <div className="flex justify-center gap-2 max-w-md mx-auto p-1.5 bg-white/80 backdrop-blur rounded-2xl border border-sky-200 shadow-sm">
+            <div className="flex justify-center gap-2 max-w-lg mx-auto p-1.5 bg-white/80 backdrop-blur rounded-2xl border border-sky-200 shadow-sm">
               <button
                 onClick={() => {
                   sounds.playPop();
@@ -504,6 +526,19 @@ export const App: React.FC = () => {
                 }`}
               >
                 Mengenal Angka 0-20
+              </button>
+              <button
+                onClick={() => {
+                  sounds.playPop();
+                  setNumberTab("tracing");
+                }}
+                className={`flex-1 py-2.5 rounded-xl font-black text-sm sm:text-base transition-all cursor-pointer ${
+                  numberTab === "tracing"
+                    ? "bg-gradient-to-r from-sky-500 to-blue-600 text-white shadow-md scale-102"
+                    : "text-slate-600 hover:bg-sky-50"
+                }`}
+              >
+                Jiplak ✍️
               </button>
               <button
                 onClick={() => {
@@ -523,6 +558,8 @@ export const App: React.FC = () => {
             {/* Active Sub Mode */}
             {numberTab === "explore" ? (
               <NumberExplorer />
+            ) : numberTab === "tracing" ? (
+              <TracingGame charset="numbers" onEarnStar={handleEarnStar} />
             ) : (
               <CountingGame onEarnStar={handleEarnStar} onBackToHome={() => setCurrentScreen("home")} />
             )}
