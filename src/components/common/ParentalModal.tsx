@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { X, Check, RotateCcw, Volume2, ShieldAlert, Mic, Sparkles } from "lucide-react";
+import { X, Check, RotateCcw, Volume2, ShieldAlert, Mic, Sparkles, Timer } from "lucide-react";
 import { sounds } from "../../utils/audioEffects";
 import { speech, VOICE_PERSONAS, VoicePersona } from "../../utils/speechHelper";
 
@@ -9,7 +9,12 @@ interface ParentalModalProps {
   onResetProgress: () => void;
   soundEnabled: boolean;
   onToggleSound: () => void;
+  screenTimeLimit: number;
+  todayUsageMinutes: number;
+  onSetScreenTimeLimit: (minutes: number) => void;
 }
+
+const SCREEN_TIME_OPTIONS = [0, 15, 30, 60];
 
 export const ParentalModal: React.FC<ParentalModalProps> = ({
   isOpen,
@@ -17,6 +22,9 @@ export const ParentalModal: React.FC<ParentalModalProps> = ({
   onResetProgress,
   soundEnabled,
   onToggleSound,
+  screenTimeLimit,
+  todayUsageMinutes,
+  onSetScreenTimeLimit,
 }) => {
   const [num1, setNum1] = useState(3);
   const [num2, setNum2] = useState(4);
@@ -241,6 +249,45 @@ export const ParentalModal: React.FC<ParentalModalProps> = ({
                   </select>
                 </div>
               )}
+            </div>
+
+            {/* Batas Waktu Belajar Harian */}
+            <div className="space-y-2.5 p-4 bg-amber-50/70 rounded-2xl border-2 border-amber-200">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-amber-900 font-black text-sm">
+                  <Timer className="w-4 h-4 text-amber-600" />
+                  <span>Batas Waktu Belajar Harian:</span>
+                </div>
+                <span className="text-[11px] font-bold text-amber-700 bg-white px-2 py-0.5 rounded-full border border-amber-200">
+                  Terpakai hari ini: {todayUsageMinutes} mnt
+                </span>
+              </div>
+              <div className="grid grid-cols-4 gap-2">
+                {SCREEN_TIME_OPTIONS.map((opt) => {
+                  const isSelected = screenTimeLimit === opt;
+                  return (
+                    <button
+                      key={opt}
+                      type="button"
+                      onClick={() => {
+                        sounds.playPop();
+                        onSetScreenTimeLimit(opt);
+                      }}
+                      className={`py-2 rounded-xl font-black text-xs border-2 transition-all cursor-pointer ${
+                        isSelected
+                          ? "bg-gradient-to-r from-amber-400 to-yellow-500 text-amber-950 border-amber-400 shadow-sm"
+                          : "bg-white text-slate-600 hover:bg-amber-50 border-slate-200"
+                      }`}
+                    >
+                      {opt === 0 ? "Mati" : `${opt} mnt`}
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="text-[11px] font-semibold text-amber-700/80">
+                Saat waktu habis, aplikasi terkunci lembut dan anak bisa meminta Ayah/Bunda
+                menambah waktu. Peringatan ramah diberikan 5 menit sebelum berakhir.
+              </p>
             </div>
 
             {/* Reset Progress */}

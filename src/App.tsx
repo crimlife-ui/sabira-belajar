@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import confetti from "canvas-confetti";
 import { Sparkles, Star, BookOpen, Hash, Calculator, Award, Moon } from "lucide-react";
 import { TopBar } from "./components/common/TopBar";
 import { ParentalModal } from "./components/common/ParentalModal";
 import { ProfileModal } from "./components/common/ProfileModal";
+import { ScreenTimeOverlay } from "./components/common/ScreenTimeOverlay";
 import {
   UserProfile,
   migrateLegacyStorage,
@@ -33,6 +34,13 @@ import { StickerAlbum } from "./components/stickers/StickerAlbum";
 import { sounds } from "./utils/audioEffects";
 import { speech } from "./utils/speechHelper";
 import { wakeLockManager } from "./utils/wakeLock";
+import {
+  getLimitMinutes,
+  setLimitMinutes,
+  getTodayUsageSeconds,
+  addUsageSeconds,
+  pruneOldUsage,
+} from "./utils/screenTime";
 import { STICKERS_LIST } from "./data/stickersData";
 
 type Screen = "home" | "letters" | "numbers" | "math" | "hijaiyah";
@@ -71,6 +79,12 @@ export const App: React.FC = () => {
   const [isStickersOpen, setIsStickersOpen] = useState(false);
   const [unlockedCelebration, setUnlockedCelebration] = useState<string | null>(null);
 
+  // Batas waktu bermain harian
+  const [screenTimeLimit, setScreenTimeLimitState] = useState(() => getLimitMinutes());
+  const [usageSeconds, setUsageSeconds] = useState(() => getTodayUsageSeconds());
+  const [isScreenTimeUp, setIsScreenTimeUp] = useState(false);
+  const screenTimeWarnedRef = useRef(false);
+
   useEffect(() => {
     sounds.setSoundEnabled(soundEnabled);
     speech.setSpeechEnabled(soundEnabled);
@@ -84,6 +98,54 @@ export const App: React.FC = () => {
       cleanup();
     };
   }, []);
+
+  // Akumulasi pemakaian harian selama aplikasi terlihat aktif
+  useEffect(() => {
+    pruneOldUsage();
+    const INTERVAL_SEC = 10;
+    const id = setInterval(() => {
+      if (document.visibilityState !== "visible") return;
+      if (getLimitMinutes() === 0) return;
+      addUsageSeconds(INTERVAL_SEC);
+      setUsageSeconds(getTodayUsageSeconds());
+    }, INTERVAL_SEC * 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  // Cek batas waktu: peringatan lembut 5 menit terakhir & kunci saat habis
+  const remainingSeconds = screenTimeLimit > 0 ? screenTimeLimit * 60 - usageSeconds : null;
+  useEffect(() => {
+    if (remainingSeconds === null) {
+      screenTimeWarnedRef.current = false;
+      setIsScreenTimeUp(false);
+      return;
+    }
+    if (remainingSeconds <= 0) {
+      if (!isScreenTimeUp) {
+        setIsScreenTimeUp(true);
+        sounds.playGentleBoing();
+        speech.speak("Waktunya istirahat dulu ya. Sampai jumpa lagi!", 0.9, 1.1);
+      }
+      return;
+    }
+    if (remainingSeconds <= 5 * 60 && !screenTimeWarnedRef.current) {
+      screenTimeWarnedRef.current = true;
+      speech.speak(
+        `${Math.ceil(remainingSeconds / 60)} menit lagi waktu belajar kita berakhir ya!`,
+        0.9,
+        1.1
+      );
+    }
+  }, [remainingSeconds, isScreenTimeUp]);
+
+  const handleSetScreenTimeLimit = (minutes: number) => {
+    setLimitMinutes(minutes);
+    setScreenTimeLimitState(minutes);
+    if (minutes === 0) {
+      screenTimeWarnedRef.current = false;
+      setIsScreenTimeUp(false);
+    }
+  };
 
   const handleEarnStar = () => {
     setStars((prev) => {
@@ -676,6 +738,14 @@ export const App: React.FC = () => {
         onClose={() => setIsProfileModalOpen(false)}
       />
 
+      {/* Overlay batas waktu habis (di bawah modal orang tua agar bisa dibuka kunci) */}
+      {isScreenTimeUp && !isParentalOpen && (
+        <ScreenTimeOverlay
+          usedMinutes={Math.max(1, Math.round(usageSeconds / 60))}
+          onUnlock={() => setIsParentalOpen(true)}
+        />
+      )}
+
       {/* Parental Gate Modal */}
       <ParentalModal
         isOpen={isParentalOpen}
@@ -683,6 +753,9 @@ export const App: React.FC = () => {
         onResetProgress={handleResetProgress}
         soundEnabled={soundEnabled}
         onToggleSound={handleToggleSound}
+        screenTimeLimit={screenTimeLimit}
+        todayUsageMinutes={Math.round(usageSeconds / 60)}
+        onSetScreenTimeLimit={handleSetScreenTimeLimit}
       />
 
       {/* Sticker Album Modal */}
