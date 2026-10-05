@@ -42,6 +42,7 @@ import {
   pruneOldUsage,
 } from "./utils/screenTime";
 import { loadStats } from "./utils/statsTracker";
+import { music } from "./utils/backgroundMusic";
 import { STICKERS_LIST } from "./data/stickersData";
 
 type Screen = "home" | "letters" | "numbers" | "math" | "hijaiyah";
@@ -76,6 +77,15 @@ export const App: React.FC = () => {
     return saved !== null ? saved === "true" : true;
   });
 
+  // Musik latar (kontrol terpisah di Area Orang Tua)
+  const [musicEnabled, setMusicEnabled] = useState<boolean>(
+    () => localStorage.getItem("sabira_music") === "true"
+  );
+  const [musicVolume, setMusicVolume] = useState<number>(() => {
+    const v = parseFloat(localStorage.getItem("sabira_music_volume") || "0.4");
+    return Number.isFinite(v) ? Math.min(1, Math.max(0, v)) : 0.4;
+  });
+
   const [isParentalOpen, setIsParentalOpen] = useState(false);
   const [isStickersOpen, setIsStickersOpen] = useState(false);
   const [unlockedCelebration, setUnlockedCelebration] = useState<string | null>(null);
@@ -91,6 +101,14 @@ export const App: React.FC = () => {
     speech.setSpeechEnabled(soundEnabled);
     localStorage.setItem("sabira_sound", String(soundEnabled));
   }, [soundEnabled]);
+
+  // Musik latar mengikuti saklar utama suara + setelan sendiri
+  useEffect(() => {
+    music.setVolume(musicVolume);
+    music.setEnabled(musicEnabled && soundEnabled);
+    localStorage.setItem("sabira_music", String(musicEnabled));
+    localStorage.setItem("sabira_music_volume", String(musicVolume));
+  }, [musicEnabled, musicVolume, soundEnabled]);
 
   // Keep screen awake while app is active
   useEffect(() => {
@@ -182,6 +200,14 @@ export const App: React.FC = () => {
 
   const handleToggleSound = () => {
     setSoundEnabled((prev) => !prev);
+  };
+
+  const handleToggleMusic = () => {
+    setMusicEnabled((prev) => !prev);
+  };
+
+  const handleSetMusicVolume = (v: number) => {
+    setMusicVolume(v);
   };
 
   const handleSaveProfile = (newProfile: UserProfile, isNew: boolean) => {
@@ -758,6 +784,10 @@ export const App: React.FC = () => {
         todayUsageMinutes={Math.round(usageSeconds / 60)}
         onSetScreenTimeLimit={handleSetScreenTimeLimit}
         stats={activeProfile ? loadStats(activeProfile.id) : {}}
+        musicEnabled={musicEnabled}
+        musicVolume={musicVolume}
+        onToggleMusic={handleToggleMusic}
+        onSetMusicVolume={handleSetMusicVolume}
       />
 
       {/* Sticker Album Modal */}

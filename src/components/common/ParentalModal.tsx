@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { X, Check, RotateCcw, Volume2, ShieldAlert, Mic, Sparkles, Timer, BarChart3 } from "lucide-react";
+import { X, Check, RotateCcw, Volume2, ShieldAlert, Mic, Sparkles, Timer, BarChart3, Music } from "lucide-react";
 import { sounds } from "../../utils/audioEffects";
 import { speech, VOICE_PERSONAS, VoicePersona } from "../../utils/speechHelper";
 import { ProfileStats, StatsModule } from "../../utils/statsTracker";
@@ -14,6 +14,10 @@ interface ParentalModalProps {
   todayUsageMinutes: number;
   onSetScreenTimeLimit: (minutes: number) => void;
   stats: ProfileStats;
+  musicEnabled: boolean;
+  musicVolume: number;
+  onToggleMusic: () => void;
+  onSetMusicVolume: (v: number) => void;
 }
 
 const SCREEN_TIME_OPTIONS = [0, 15, 30, 60];
@@ -45,6 +49,10 @@ export const ParentalModal: React.FC<ParentalModalProps> = ({
   todayUsageMinutes,
   onSetScreenTimeLimit,
   stats,
+  musicEnabled,
+  musicVolume,
+  onToggleMusic,
+  onSetMusicVolume,
 }) => {
   const [num1, setNum1] = useState(3);
   const [num2, setNum2] = useState(4);
@@ -267,6 +275,49 @@ export const ParentalModal: React.FC<ParentalModalProps> = ({
                       </option>
                     ))}
                   </select>
+                </div>
+              )}
+            </div>
+
+            {/* Musik Latar */}
+            <div className="space-y-2.5 p-3 bg-violet-50/70 rounded-2xl border-2 border-violet-200">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Music className="w-6 h-6 text-violet-600" />
+                  <div>
+                    <p className="font-bold text-slate-800 text-sm">Musik Latar</p>
+                    <p className="text-xs text-slate-500">Nada kotak musik yang menenangkan</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    onToggleMusic();
+                    sounds.playPop();
+                  }}
+                  className={`px-4 py-1.5 rounded-full font-bold text-xs transition-all cursor-pointer ${
+                    musicEnabled
+                      ? "bg-violet-500 text-white"
+                      : "bg-slate-300 text-slate-700"
+                  }`}
+                >
+                  {musicEnabled ? "Aktif" : "Mati"}
+                </button>
+              </div>
+              {musicEnabled && (
+                <div className="flex items-center gap-3 pt-1">
+                  <span className="text-[11px] font-bold text-violet-700 shrink-0">Volume:</span>
+                  <input
+                    type="range"
+                    min={0}
+                    max={100}
+                    value={Math.round(musicVolume * 100)}
+                    onChange={(e) => onSetMusicVolume(parseInt(e.target.value, 10) / 100)}
+                    className="flex-1 accent-violet-500 cursor-pointer"
+                    aria-label="Volume musik latar"
+                  />
+                  <span className="text-[11px] font-black text-violet-700 w-8 text-right">
+                    {Math.round(musicVolume * 100)}%
+                  </span>
                 </div>
               )}
             </div>
