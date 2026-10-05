@@ -42,7 +42,7 @@ import {
   pruneOldUsage,
 } from "./utils/screenTime";
 import { loadStats } from "./utils/statsTracker";
-import { music } from "./utils/backgroundMusic";
+import { music, MusicStyle } from "./utils/backgroundMusic";
 import { STICKERS_LIST } from "./data/stickersData";
 
 type Screen = "home" | "letters" | "numbers" | "math" | "hijaiyah";
@@ -85,6 +85,9 @@ export const App: React.FC = () => {
     const v = parseFloat(localStorage.getItem("sabira_music_volume") || "0.4");
     return Number.isFinite(v) ? Math.min(1, Math.max(0, v)) : 0.4;
   });
+  const [musicStyle, setMusicStyle] = useState<MusicStyle>(() =>
+    localStorage.getItem("sabira_music_style") === "8bit" ? "8bit" : "lullaby"
+  );
 
   const [isParentalOpen, setIsParentalOpen] = useState(false);
   const [isStickersOpen, setIsStickersOpen] = useState(false);
@@ -105,10 +108,12 @@ export const App: React.FC = () => {
   // Musik latar mengikuti saklar utama suara + setelan sendiri
   useEffect(() => {
     music.setVolume(musicVolume);
+    music.setStyle(musicStyle);
     music.setEnabled(musicEnabled && soundEnabled);
     localStorage.setItem("sabira_music", String(musicEnabled));
     localStorage.setItem("sabira_music_volume", String(musicVolume));
-  }, [musicEnabled, musicVolume, soundEnabled]);
+    localStorage.setItem("sabira_music_style", musicStyle);
+  }, [musicEnabled, musicVolume, soundEnabled, musicStyle]);
 
   // Keep screen awake while app is active
   useEffect(() => {
@@ -208,6 +213,10 @@ export const App: React.FC = () => {
 
   const handleSetMusicVolume = (v: number) => {
     setMusicVolume(v);
+  };
+
+  const handleSetMusicStyle = (style: MusicStyle) => {
+    setMusicStyle(style);
   };
 
   const handleSaveProfile = (newProfile: UserProfile, isNew: boolean) => {
@@ -786,8 +795,10 @@ export const App: React.FC = () => {
         stats={activeProfile ? loadStats(activeProfile.id) : {}}
         musicEnabled={musicEnabled}
         musicVolume={musicVolume}
+        musicStyle={musicStyle}
         onToggleMusic={handleToggleMusic}
         onSetMusicVolume={handleSetMusicVolume}
+        onSetMusicStyle={handleSetMusicStyle}
       />
 
       {/* Sticker Album Modal */}

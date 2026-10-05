@@ -3,6 +3,7 @@ import { X, Check, RotateCcw, Volume2, ShieldAlert, Mic, Sparkles, Timer, BarCha
 import { sounds } from "../../utils/audioEffects";
 import { speech, VOICE_PERSONAS, VoicePersona } from "../../utils/speechHelper";
 import { ProfileStats, StatsModule } from "../../utils/statsTracker";
+import { MusicStyle } from "../../utils/backgroundMusic";
 
 interface ParentalModalProps {
   isOpen: boolean;
@@ -16,8 +17,10 @@ interface ParentalModalProps {
   stats: ProfileStats;
   musicEnabled: boolean;
   musicVolume: number;
+  musicStyle: MusicStyle;
   onToggleMusic: () => void;
   onSetMusicVolume: (v: number) => void;
+  onSetMusicStyle: (style: MusicStyle) => void;
 }
 
 const SCREEN_TIME_OPTIONS = [0, 15, 30, 60];
@@ -51,8 +54,10 @@ export const ParentalModal: React.FC<ParentalModalProps> = ({
   stats,
   musicEnabled,
   musicVolume,
+  musicStyle,
   onToggleMusic,
   onSetMusicVolume,
+  onSetMusicStyle,
 }) => {
   const [num1, setNum1] = useState(3);
   const [num2, setNum2] = useState(4);
@@ -302,6 +307,37 @@ export const ParentalModal: React.FC<ParentalModalProps> = ({
                 >
                   {musicEnabled ? "Aktif" : "Mati"}
                 </button>
+              </div>
+              {/* Pemilih gaya musik */}
+              <div className="flex items-center gap-2 pt-1">
+                <span className="text-[11px] font-bold text-violet-700 shrink-0">Gaya:</span>
+                <div className="flex flex-1 gap-1.5">
+                  {(
+                    [
+                      { id: "lullaby" as MusicStyle, label: "🎵 Nurseri" },
+                      { id: "8bit" as MusicStyle, label: "🎮 8-Bit" },
+                    ]
+                  ).map((opt) => {
+                    const isSelected = musicStyle === opt.id;
+                    return (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        onClick={() => {
+                          sounds.playPop();
+                          onSetMusicStyle(opt.id);
+                        }}
+                        className={`flex-1 py-1.5 rounded-xl font-black text-xs border-2 transition-all cursor-pointer ${
+                          isSelected
+                            ? "bg-violet-500 text-white border-violet-500 shadow-sm"
+                            : "bg-white text-slate-600 hover:bg-violet-50 border-slate-200"
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
               {musicEnabled && (
                 <div className="flex items-center gap-3 pt-1">

@@ -1,22 +1,25 @@
-// Musik latar lembut via WebAudio (tanpa file audio).
-// Melodi nursery 4-bar di atas progresi C - Am - F - G; semua nada melodi
-// adalah chord tone sehingga tidak ada ketegangan/dissonans.
+// Musik latar via WebAudio (tanpa file audio), dua gaya:
+// - "lullaby": melodi nursery lembut, pad + bass, 92 BPM (C - Am - F - G)
+// - "8bit":    chiptune NES — lead square staccato, bass triangle kiprah
+//              kuart-kuener, hi-hat noise tipis, 132 BPM
+// Semua nada melodi adalah chord tone sehingga tidak ada dissonans.
 // Dijadwalkan dengan lookahead scheduler agar tempo stabil (tidak jitter).
+
+export type MusicStyle = "lullaby" | "8bit";
 
 class BackgroundMusicManager {
   private ctx: AudioContext | null = null;
   private master: GainNode | null = null;
   private tone: BiquadFilterNode | null = null;
+  private noiseBuffer: AudioBuffer | null = null;
   private timer: number | null = null;
   private enabled = false;
   private volume = 0.4;
+  private style: MusicStyle = "lullaby";
   private beatIndex = 0;
   private nextBeatTime = 0;
 
-  // 92 BPM — jalan santai khas lagu pengantar tidur
-  private static readonly BEAT = 60 / 92;
-
-  // Melodi (Hz): tiap nada adalah anggota akor yang sedang berbunyi.
+  // Progresi & melodi yang sama dipakai kedua gaya (16 ketukan = 4 bar)
   private static readonly MELODY: number[][] = [
     [659.26, 523.25, 392.0, 523.25], // C:  E5 C5 G4 C5
     [440.0, 523.25, 659.26, 523.25], // Am: A4 C5 E5 C5
@@ -31,10 +34,35 @@ class BackgroundMusicManager {
     { pad: [196.0, 246.94, 293.66], bass: 98.0 }, //   G
   ];
 
+  private get beatDur(): number {
+    return this.style === "8bit" ? 60 / 132 : 60 / 92;
+  }
+
+  private get filterFreq(): number {
+    // 8-bit butuh harmonik square yang terasa; nurseri dibulatkan agar hangat.
+    return this.style === "8bit" ? 5200 : 2000;
+  }
+
   setVolume(v: number): void {
     this.volume = Math.min(1, Math.max(0, v));
     if (this.master && this.ctx) {
       this.master.gain.setTargetAtTime(this.volume * 0.5, this.ctx.currentTime, 0.1);
+    }
+  }
+
+  setStyle(style: MusicStyle): void {
+    if (style === this.style) return;
+    this.style = style;
+    if (this.tone && this.ctx) {
+      this.tone.frequency.setTargetAtTime(this.filterFreq, this.ctx.currentTime, 0.05);
+    }
+    if (this.timer !== null && this.ctx) {
+      // Sedang berputar: mulai ulang agar groove gaya baru dimulai dari awal
+      clearInterval(this.timer);
+      this.timer = null;
+      this.beatIndex = 0;
+      this.nextBeatTime = this.ctx.currentTime + 0.1;
+      this.timer = window.setInterval(() => this.scheduleAhead(), 250);
     }
   }
 
@@ -56,10 +84,9 @@ class BackgroundMusicManager {
       this.ctx = new AC();
       this.master = this.ctx.createGain();
       this.master.gain.value = this.volume * 0.5;
-      // Lowpass lembut: buang nada tajam/pedih yang bikin "seram"
       this.tone = this.ctx.createBiquadFilter();
       this.tone.type = "lowpass";
-      this.tone.frequency.value = 2000;
+      this.tone.frequency.value = this.filterFreq;
       this.tone.Q.value = 0.4;
       this.tone.connect(this.master);
       this.master.connect(this.ctx.destination);
@@ -91,22 +118,36 @@ class BackgroundMusicManager {
       return;
     }
     const now = this.ctx.currentTime;
-    const beat = BackgroundMusicManager.BEAT;
+    const beat = this.beatDur;
     while (this.nextBeatTime < now + 0.8) {
       const pos = this.beatIndex % 16;
       const bar = Math.floor(pos / 4);
       const chord = BackgroundMusicManager.CHORDS[bar];
+      const t = this.nextBeatTime;
 
-      if (pos % 4 === 0) {
-        this.playPad(chord.pad, this.nextBeatTime, 4 * beat);
-        this.playBass(chord.bass, this.nextBeatTime);
+      if (this.style === "lullaby") {
+        if (pos % 4 === 0) {
+          this.playPad(chord.pad, t, 4 * beat);
+          this.playBass(chord.bass, t);
+        }
+        this.playMelodyNote(BackgroundMusicManager.MELODY[bar][pos % 4], t);
+      } else {
+        // 8-bit: lead square kuart staccato, bass triangle kuart-kuener,
+        // hi-hat noise tipis di offbeat.
+        this.playChipLead(BackgroundMusicManager.MELODY[bar][pos % 4], t);
+        const eighth = beat / 2;
+        this.playChipBass(chord.bass, t, eighth);
+        this.playChipBass(chord.bass * 1.5, t + eighth, eighth);
+        this.playNoise(t + eighth, 0.03);
+        if (pos % 4 === 0) this.playNoise(t, 0.05);
       }
-      this.playMelodyNote(BackgroundMusicManager.MELODY[bar][pos % 4], this.nextBeatTime);
 
       this.nextBeatTime += beat;
       this.beatIndex++;
     }
   }
+
+  // ===== Gaya nurseri =====
 
   // Nada melodi: sine + sedikit triangle (kalimba hangat), attack cepat, decay halus.
   private playMelodyNote(freq: number, t: number): void {
@@ -176,6 +217,67 @@ class BackgroundMusicManager {
     g.connect(dest);
     osc.start(t);
     osc.stop(t + 2.0);
+  }
+
+  // ===== Gaya 8-bit =====
+
+  // Lead square staccato — karakter NES. Gain dipagari agar tidak menembus telinga.
+  private playChipLead(freq: number, t: number): void {
+    const ctx = this.ctx;
+    const dest = this.tone;
+    if (!ctx || !dest) return;
+    const osc = ctx.createOscillator();
+    const g = ctx.createGain();
+    osc.type = "square";
+    osc.frequency.value = freq;
+    g.gain.setValueAtTime(0.13, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.22);
+    osc.connect(g);
+    g.connect(dest);
+    osc.start(t);
+    osc.stop(t + 0.3);
+  }
+
+  // Bass triangle kiprah kuart-kuener (akar & kuint) — pasangan klasik lead square.
+  private playChipBass(freq: number, t: number, dur: number): void {
+    const ctx = this.ctx;
+    const dest = this.tone;
+    if (!ctx || !dest) return;
+    const osc = ctx.createOscillator();
+    const g = ctx.createGain();
+    osc.type = "triangle";
+    osc.frequency.value = freq;
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.linearRampToValueAtTime(0.22, t + 0.015);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur * 1.6);
+    osc.connect(g);
+    g.connect(dest);
+    osc.start(t);
+    osc.stop(t + dur * 1.6 + 0.05);
+  }
+
+  // Hi-hat noise tipis untuk penguat ritme.
+  private playNoise(t: number, peak: number): void {
+    const ctx = this.ctx;
+    const dest = this.tone;
+    if (!ctx || !dest) return;
+    if (!this.noiseBuffer) {
+      const len = Math.floor(ctx.sampleRate * 0.05);
+      this.noiseBuffer = ctx.createBuffer(1, len, ctx.sampleRate);
+      const data = this.noiseBuffer.getChannelData(0);
+      for (let i = 0; i < len; i++) {
+        data[i] = Math.random() * 2 - 1;
+      }
+    }
+    const src = ctx.createBufferSource();
+    src.buffer = this.noiseBuffer;
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(peak, t);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.045);
+    src.connect(g);
+    g.connect(dest);
+    src.start(t);
+    src.stop(t + 0.06);
   }
 }
 
