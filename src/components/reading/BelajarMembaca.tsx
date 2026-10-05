@@ -11,7 +11,13 @@ import {
 } from "lucide-react";
 import { sounds } from "../../utils/audioEffects";
 import { speech } from "../../utils/speechHelper";
-import { READING_WORDS, READING_SENTENCES, getWordSyllables } from "../../data/readingData";
+import {
+  READING_WORDS,
+  READING_SENTENCES,
+  getWordSyllables,
+  getLetterUnits,
+  getLetterName,
+} from "../../data/readingData";
 import { trackAnswer, trackSessionComplete } from "../../utils/statsTracker";
 import { SessionCompleteModal } from "../common/SessionCompleteModal";
 
@@ -176,8 +182,9 @@ const WordReader: React.FC = () => {
 };
 
 // ==================== TAB 2: BACA KALIMAT ====================
-// Alur: anak mengeja kata-per-kata (suku kata berurutan), kata yang selesai
-// dieja tampil UTUH di strip kalimat, hingga akhirnya menjadi kalimat penuh.
+// Alur: anak mengeja HURUF-per-huruf (digraf ng/ny/sy/kh = satu unit),
+// kata yang selesai dieja tampil UTUH di strip kalimat, hingga menjadi
+// kalimat penuh — anak belajar huruf pembentuk kata + membaca sekaligus.
 const SentenceReader: React.FC = () => {
   const [order] = useState<number[]>(() => shuffleIndices(READING_SENTENCES.length));
   const [step, setStep] = useState(0);
@@ -191,6 +198,7 @@ const SentenceReader: React.FC = () => {
 
   const currentWord = words[wordIdx];
   const currentSyllables = syllablesOf(currentWord);
+  const letterUnits = getLetterUnits(currentWord);
   const completedCount = sentenceDone ? words.length : wordIdx;
 
   const reset = () => {
@@ -219,18 +227,18 @@ const SentenceReader: React.FC = () => {
     }
   };
 
-  const handleTapSyllable = (idx: number) => {
+  const handleTapLetter = (idx: number) => {
     if (sentenceDone) return;
     if (idx === ejaProgress) {
       sounds.playPop();
-      speech.speak(currentSyllables[idx], 0.75, 1.2);
+      speech.speak(getLetterName(letterUnits[idx]), 0.75, 1.2);
       const next = ejaProgress + 1;
       setEjaProgress(next);
-      if (next >= currentSyllables.length) {
+      if (next >= letterUnits.length) {
         window.setTimeout(completeWord, 550);
       }
     } else {
-      // Bukan suku kata berikutnya: dorongan lembut, tanpa penalti
+      // Bukan huruf berikutnya: dorongan lembut, tanpa penalti
       sounds.playGentleBoing();
     }
   };
@@ -244,7 +252,7 @@ const SentenceReader: React.FC = () => {
         <span>
           {sentenceDone
             ? "Kalimat selesai! 🎉"
-            : `Kata ${wordIdx + 1}/${words.length} • eja suku katanya!`}
+            : `Kata ${wordIdx + 1}/${words.length} • eja hurufnya!`}
         </span>
       </div>
 
@@ -330,22 +338,23 @@ const SentenceReader: React.FC = () => {
           </div>
         </div>
       ) : (
-        /* Kartu eja kata aktif */
+        /* Kartu eja huruf kata aktif */
         <div className="bg-white/95 rounded-3xl border-4 border-violet-200 shadow-lg p-6 text-center space-y-4">
           <p className="text-sm font-bold text-slate-500">
-            Eja kata ini: sentuh suku katanya <span className="text-violet-500">berurutan</span>!
+            Eja kata <span className="font-black text-slate-700">{currentWord}</span>: sentuh{" "}
+            <span className="text-violet-500">hurufnya berurutan</span>!
           </p>
 
-          {/* Chip suku kata kata aktif */}
-          <div className="flex flex-wrap justify-center gap-2 sm:gap-3">
-            {currentSyllables.map((syl, i) => {
+          {/* Chip huruf kata aktif */}
+          <div className="flex flex-wrap justify-center gap-1.5 sm:gap-2">
+            {letterUnits.map((unit, i) => {
               const isFilled = i < ejaProgress;
               const isNext = i === ejaProgress;
               return (
                 <button
                   key={i}
-                  onClick={() => handleTapSyllable(i)}
-                  className={`px-4 sm:px-6 py-3 rounded-2xl font-black text-3xl sm:text-4xl border-2 shadow-sm active:scale-95 transition-all ${
+                  onClick={() => handleTapLetter(i)}
+                  className={`px-3 sm:px-3.5 py-2.5 rounded-xl font-black text-2xl sm:text-3xl border-2 shadow-sm active:scale-95 transition-all ${
                     isFilled
                       ? "bg-emerald-100 border-emerald-400 text-emerald-700"
                       : isNext
@@ -353,7 +362,7 @@ const SentenceReader: React.FC = () => {
                       : "bg-slate-50 border-slate-200 text-slate-400 cursor-pointer hover:bg-violet-50"
                   }`}
                 >
-                  {syl}
+                  {unit}
                 </button>
               );
             })}
@@ -363,7 +372,11 @@ const SentenceReader: React.FC = () => {
             <button
               onClick={() => {
                 sounds.playPop();
-                speech.speak(`${currentSyllables.join("... ")}. ${currentWord}!`, 0.8, 1.15);
+                speech.speak(
+                  `${letterUnits.map(getLetterName).join("... ")}. ${currentSyllables.join("... ")}. ${currentWord}!`,
+                  0.75,
+                  1.15
+                );
               }}
               className="px-4 py-2 bg-violet-50 hover:bg-violet-100 text-violet-700 font-black rounded-xl border-2 border-violet-200 text-xs flex items-center gap-1.5 cursor-pointer active:scale-95 transition-all"
             >

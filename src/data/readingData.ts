@@ -136,3 +136,37 @@ export const SENTENCE_WORD_SYLLABLES: Record<string, string[]> = {
 export function getWordSyllables(word: string): string[] {
   return SENTENCE_WORD_SYLLABLES[word.toLowerCase()] ?? [word.toLowerCase()];
 }
+
+// Nama huruf (eja) gaya sekolah Indonesia: b = "be", k = "ka", dst.
+// Digraf dihitung satu unit bunyi: ng = "nga", ny = "nya", sy = "sya", kh = "kha".
+export const LETTER_NAMES: Record<string, string> = {
+  a: "a", b: "be", c: "ce", d: "de", e: "e", f: "ef", g: "ge", h: "ha",
+  i: "i", j: "je", k: "ka", l: "el", m: "em", n: "en", o: "o", p: "pe",
+  q: "ki", r: "er", s: "es", t: "te", u: "u", v: "fe", w: "we", x: "eks",
+  y: "ye", z: "zet",
+  ng: "nga", ny: "nya", sy: "sya", kh: "kha",
+};
+
+const DIGRAPH_UNITS = ["ng", "ny", "sy", "kh"];
+
+// Pecah kata menjadi unit huruf (digraf tetap satu unit, tanda hubung diabaikan).
+export function getLetterUnits(word: string): string[] {
+  const clean = word.toLowerCase().replace(/[^a-z]/g, "");
+  const units: string[] = [];
+  let i = 0;
+  while (i < clean.length) {
+    const pair = clean.slice(i, i + 2);
+    if (DIGRAPH_UNITS.includes(pair)) {
+      units.push(pair);
+      i += 2;
+    } else {
+      units.push(clean[i]);
+      i += 1;
+    }
+  }
+  return units;
+}
+
+export function getLetterName(unit: string): string {
+  return LETTER_NAMES[unit] ?? unit;
+}

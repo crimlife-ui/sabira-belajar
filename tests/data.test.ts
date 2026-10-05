@@ -14,6 +14,8 @@ import {
   READING_WORDS,
   READING_SENTENCES,
   SENTENCE_WORD_SYLLABLES,
+  getLetterUnits,
+  getLetterName,
 } from "../src/data/readingData";
 
 describe("ALPHABET_LIST", () => {
@@ -183,6 +185,27 @@ describe("READING_SENTENCES", () => {
         const syl = SENTENCE_WORD_SYLLABLES[w.toLowerCase()];
         expect(syl).toBeDefined();
         expect(syl.join("").toLowerCase()).toBe(w.toLowerCase().replace(/-/g, ""));
+      }
+    }
+  });
+});
+
+describe("getLetterUnits", () => {
+  it("memecah kata per huruf dengan digraf sebagai satu unit", () => {
+    expect(getLetterUnits("kucing")).toEqual(["k", "u", "c", "i", "ng"]);
+    expect(getLetterUnits("menyanyi")).toEqual(["m", "e", "ny", "a", "ny", "i"]);
+    expect(getLetterUnits("hinggap")).toEqual(["h", "i", "ng", "g", "a", "p"]);
+    expect(getLetterUnits("bola")).toEqual(["b", "o", "l", "a"]);
+  });
+
+  it("hasil pecahan selalu menyusun ulang kata asli (tanpa tanda hubung)", () => {
+    for (const s of READING_SENTENCES) {
+      const words = s.text.replace(".", "").split(" ");
+      for (const w of words) {
+        expect(getLetterUnits(w).join("")).toBe(w.toLowerCase().replace(/-/g, ""));
+        for (const unit of getLetterUnits(w)) {
+          expect(getLetterName(unit).length).toBeGreaterThan(0);
+        }
       }
     }
   });
