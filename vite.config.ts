@@ -4,6 +4,8 @@ import { VitePWA } from 'vite-plugin-pwa'
 
 // https://vite.dev/config/
 export default defineConfig({
+  // GitHub Pages menyajikan aplikasi dari subpath /sabira-belajar/
+  base: process.env.GITHUB_ACTIONS ? '/sabira-belajar/' : '/',
   plugins: [
     react(),
     VitePWA({
