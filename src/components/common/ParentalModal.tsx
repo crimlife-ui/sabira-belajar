@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
-import { X, Check, RotateCcw, Volume2, ShieldAlert, Mic, Sparkles, Timer } from "lucide-react";
+import { X, Check, RotateCcw, Volume2, ShieldAlert, Mic, Sparkles, Timer, BarChart3 } from "lucide-react";
 import { sounds } from "../../utils/audioEffects";
 import { speech, VOICE_PERSONAS, VoicePersona } from "../../utils/speechHelper";
+import { ProfileStats, StatsModule } from "../../utils/statsTracker";
 
 interface ParentalModalProps {
   isOpen: boolean;
@@ -12,9 +13,27 @@ interface ParentalModalProps {
   screenTimeLimit: number;
   todayUsageMinutes: number;
   onSetScreenTimeLimit: (minutes: number) => void;
+  stats: ProfileStats;
 }
 
 const SCREEN_TIME_OPTIONS = [0, 15, 30, 60];
+
+const MODULE_LABELS: Record<StatsModule, string> = {
+  spelling: "Eja Huruf 🧩",
+  syllables: "Eja Suku Kata 🗣️",
+  balloon: "Balon Huruf 🎈",
+  counting: "Hitung Benda 🍎",
+  math: "Matematika ➕➖",
+  hijaiyahQuiz: "Kuis Hijaiyah 🎯",
+};
+
+function formatLastPlayed(ts: number): string {
+  if (!ts) return "-";
+  const days = Math.floor((Date.now() - ts) / 86400000);
+  if (days <= 0) return "hari ini";
+  if (days === 1) return "kemarin";
+  return `${days} hari lalu`;
+}
 
 export const ParentalModal: React.FC<ParentalModalProps> = ({
   isOpen,
@@ -25,6 +44,7 @@ export const ParentalModal: React.FC<ParentalModalProps> = ({
   screenTimeLimit,
   todayUsageMinutes,
   onSetScreenTimeLimit,
+  stats,
 }) => {
   const [num1, setNum1] = useState(3);
   const [num2, setNum2] = useState(4);
@@ -288,6 +308,44 @@ export const ParentalModal: React.FC<ParentalModalProps> = ({
                 Saat waktu habis, aplikasi terkunci lembut dan anak bisa meminta Ayah/Bunda
                 menambah waktu. Peringatan ramah diberikan 5 menit sebelum berakhir.
               </p>
+            </div>
+
+            {/* Laporan Belajar */}
+            <div className="space-y-2.5 p-4 bg-sky-50/70 rounded-2xl border-2 border-sky-200">
+              <div className="flex items-center gap-2 text-sky-900 font-black text-sm">
+                <BarChart3 className="w-4 h-4 text-sky-600" />
+                <span>Laporan Belajar:</span>
+              </div>
+              {Object.values(stats).some((s) => s && s.answered > 0) ? (
+                <div className="space-y-1.5">
+                  {(Object.keys(MODULE_LABELS) as StatsModule[]).map((mod) => {
+                    const s = stats[mod];
+                    if (!s || s.answered === 0) return null;
+                    const accuracy = Math.round((s.correct / s.answered) * 100);
+                    return (
+                      <div
+                        key={mod}
+                        className="flex items-center justify-between bg-white rounded-xl px-3 py-2 border border-sky-100"
+                      >
+                        <span className="text-xs font-black text-slate-700">
+                          {MODULE_LABELS[mod]}
+                        </span>
+                        <span className="text-[11px] font-bold text-slate-500 text-right">
+                          {s.sessions} sesi selesai &bull; akurasi {accuracy}%
+                          <br />
+                          <span className="text-slate-400">
+                            terakhir main: {formatLastPlayed(s.lastPlayed)}
+                          </span>
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="text-xs font-semibold text-sky-700/80">
+                  Belum ada data. Setelah anak menyelesaikan soal, laporan akan muncul di sini.
+                </p>
+              )}
             </div>
 
             {/* Reset Progress */}

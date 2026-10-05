@@ -3,6 +3,7 @@ import confetti from "canvas-confetti";
 import { Volume2, RotateCcw, Home } from "lucide-react";
 import { HIJAIYAH_LIST, ARABIC_NUMBERS_LIST } from "../../data/hijaiyahData";
 import { sounds } from "../../utils/audioEffects";
+import { trackAnswer, trackSessionComplete } from "../../utils/statsTracker";
 import { speech } from "../../utils/speechHelper";
 
 interface HijaiyahQuizProps {
@@ -136,6 +137,7 @@ export const HijaiyahQuiz: React.FC<HijaiyahQuizProps> = ({ onEarnStar, onBackTo
 
     if (option.isCorrect) {
       sounds.playSuccess();
+      trackAnswer("hijaiyahQuiz", true);
       setScore((s) => s + 1);
       onEarnStar();
       confetti({
@@ -146,6 +148,7 @@ export const HijaiyahQuiz: React.FC<HijaiyahQuizProps> = ({ onEarnStar, onBackTo
       speech.praise();
     } else {
       sounds.playError();
+      trackAnswer("hijaiyahQuiz", false);
       speech.encourage();
     }
 
@@ -161,6 +164,7 @@ export const HijaiyahQuiz: React.FC<HijaiyahQuizProps> = ({ onEarnStar, onBackTo
         }
       } else {
         setIsCompleted(true);
+        trackSessionComplete("hijaiyahQuiz");
         sounds.playFanfare();
         confetti({
           particleCount: 100,

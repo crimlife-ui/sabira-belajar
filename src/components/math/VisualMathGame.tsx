@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import confetti from "canvas-confetti";
 import { Sparkles, ArrowRight, Plus, Minus, Star, Shuffle } from "lucide-react";
 import { sounds } from "../../utils/audioEffects";
+import { trackAnswer, trackSessionComplete } from "../../utils/statsTracker";
 import { speech } from "../../utils/speechHelper";
 import { SessionCompleteModal } from "../common/SessionCompleteModal";
 
@@ -141,6 +142,7 @@ export const VisualMathGame: React.FC<VisualMathGameProps> = ({ onEarnStar, onBa
       setIsCompleted(true);
       setSelectedWrong(null);
       sounds.playCorrectChime();
+      trackAnswer("math", true);
       onEarnStar();
 
       confetti({
@@ -156,6 +158,7 @@ export const VisualMathGame: React.FC<VisualMathGameProps> = ({ onEarnStar, onBa
     } else {
       setSelectedWrong(ans);
       sounds.playGentleBoing();
+      trackAnswer("math", false);
       speech.speak("Belum pas, yuk hitung lagi gambarnya!", 0.9, 1.1);
     }
   };
@@ -164,6 +167,7 @@ export const VisualMathGame: React.FC<VisualMathGameProps> = ({ onEarnStar, onBa
     sounds.playPop();
     if (sessionStep + 1 >= SESSION_SIZE) {
       setIsSessionComplete(true);
+      trackSessionComplete("math");
     } else {
       setSessionStep((s) => s + 1);
     }

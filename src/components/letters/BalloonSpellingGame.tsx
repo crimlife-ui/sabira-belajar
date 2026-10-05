@@ -3,6 +3,7 @@ import confetti from "canvas-confetti";
 import { Sparkles, ArrowRight, RotateCcw, Volume2, Star, Shuffle, AlertCircle } from "lucide-react";
 import { SPELLING_WORDS, SpellingWord } from "../../data/spellingData";
 import { sounds } from "../../utils/audioEffects";
+import { trackAnswer, trackSessionComplete } from "../../utils/statsTracker";
 import { speech } from "../../utils/speechHelper";
 import { SessionCompleteModal } from "../common/SessionCompleteModal";
 
@@ -241,6 +242,7 @@ export const BalloonSpellingGame: React.FC<BalloonSpellingGameProps> = ({
               // ALL LETTERS PLACED!
               setIsCompleted(true);
               sounds.playCorrectChime();
+              trackAnswer("balloon", true);
               onEarnStar();
               confetti({
                 particleCount: 70,
@@ -280,6 +282,7 @@ export const BalloonSpellingGame: React.FC<BalloonSpellingGameProps> = ({
     } else {
       // WRONG BALLOON
       sounds.playGentleBoing();
+      trackAnswer("balloon", false);
       setWrongChar(balloon.id);
 
       const msg = `Balon '${balloon.char}' belum pas. Cari balon huruf '${expectedChar}' ya!`;
@@ -300,6 +303,7 @@ export const BalloonSpellingGame: React.FC<BalloonSpellingGameProps> = ({
     sounds.playPop();
     if (sessionStep + 1 >= SESSION_SIZE) {
       setIsSessionComplete(true);
+      trackSessionComplete("balloon");
     } else {
       setSessionStep((s) => s + 1);
     }

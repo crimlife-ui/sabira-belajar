@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import confetti from "canvas-confetti";
 import { Sparkles, ArrowRight, RotateCcw, Star, Shuffle } from "lucide-react";
 import { sounds } from "../../utils/audioEffects";
+import { trackAnswer, trackSessionComplete } from "../../utils/statsTracker";
 import { speech } from "../../utils/speechHelper";
 import { SessionCompleteModal } from "../common/SessionCompleteModal";
 
@@ -153,6 +154,7 @@ export const CountingGame: React.FC<CountingGameProps> = ({ onEarnStar, onBackTo
       setIsCompleted(true);
       setSelectedWrongAnswer(null);
       sounds.playCorrectChime();
+      trackAnswer("counting", true);
       onEarnStar();
 
       confetti({
@@ -167,6 +169,7 @@ export const CountingGame: React.FC<CountingGameProps> = ({ onEarnStar, onBackTo
     } else {
       setSelectedWrongAnswer(num);
       sounds.playGentleBoing();
+      trackAnswer("counting", false);
       speech.speak("Bukan itu, yuk coba hitung lagi!", 0.9, 1.1);
     }
   };
@@ -175,6 +178,7 @@ export const CountingGame: React.FC<CountingGameProps> = ({ onEarnStar, onBackTo
     sounds.playPop();
     if (sessionStep + 1 >= SESSION_SIZE) {
       setIsSessionComplete(true);
+      trackSessionComplete("counting");
     } else {
       setSessionStep((s) => s + 1);
     }

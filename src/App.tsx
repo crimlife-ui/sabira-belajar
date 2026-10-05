@@ -41,6 +41,7 @@ import {
   addUsageSeconds,
   pruneOldUsage,
 } from "./utils/screenTime";
+import { loadStats } from "./utils/statsTracker";
 import { STICKERS_LIST } from "./data/stickersData";
 
 type Screen = "home" | "letters" | "numbers" | "math" | "hijaiyah";
@@ -756,6 +757,7 @@ export const App: React.FC = () => {
         screenTimeLimit={screenTimeLimit}
         todayUsageMinutes={Math.round(usageSeconds / 60)}
         onSetScreenTimeLimit={handleSetScreenTimeLimit}
+        stats={activeProfile ? loadStats(activeProfile.id) : {}}
       />
 
       {/* Sticker Album Modal */}

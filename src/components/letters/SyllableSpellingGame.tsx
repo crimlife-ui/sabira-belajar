@@ -3,6 +3,7 @@ import confetti from "canvas-confetti";
 import { Sparkles, ArrowRight, RotateCcw, Volume2, Star, Shuffle, AlertCircle, CheckCircle2 } from "lucide-react";
 import { SPELLING_WORDS, SpellingWord } from "../../data/spellingData";
 import { sounds } from "../../utils/audioEffects";
+import { trackAnswer, trackSessionComplete } from "../../utils/statsTracker";
 import { speech } from "../../utils/speechHelper";
 import { SessionCompleteModal } from "../common/SessionCompleteModal";
 
@@ -255,6 +256,7 @@ export const SyllableSpellingGame: React.FC<SyllableSpellingGameProps> = ({ onEa
           if (nextLetterIdx >= currentPart.letters.length) {
             // Current syllable completed! E.g. PEN is done!
             sounds.playCorrectChime();
+            trackAnswer("syllables", true);
 
             const spelledLetters = currentPart.letters.join("-");
             const successText = `${spelledLetters} dibaca ${currentPart.syllable}!`;
@@ -338,6 +340,7 @@ export const SyllableSpellingGame: React.FC<SyllableSpellingGameProps> = ({ onEa
     } else {
       // WRONG BALLOON
       sounds.playGentleBoing();
+      trackAnswer("syllables", false);
       setWrongBalloonId(balloon.id);
 
       const stepName =
@@ -369,6 +372,7 @@ export const SyllableSpellingGame: React.FC<SyllableSpellingGameProps> = ({ onEa
     if (sessionStep + 1 >= SESSION_SIZE) {
       // Session finished!
       setIsSessionComplete(true);
+      trackSessionComplete("syllables");
     } else {
       setSessionStep((s) => s + 1);
     }
