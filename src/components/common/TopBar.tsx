@@ -69,7 +69,7 @@ export const TopBar: React.FC<TopBarProps> = ({
               onOpenProfile();
             }}
             className="flex items-center gap-1.5 px-2.5 py-1 bg-white/90 hover:bg-white text-slate-800 font-black rounded-2xl shadow-md border-2 border-pink-200 active:scale-95 transition-all cursor-pointer"
-            title={`Profil: ${profile.name} (${profile.age} Thn) - Klik untuk ubah`}
+            title={`Profil: ${profile.name} (${profile.age} Thn) - Klik untuk ganti anak`}
           >
             <span className="text-xl sm:text-2xl">{profile.avatar}</span>
             <span className="text-xs sm:text-sm hidden md:inline">{profile.name}</span>

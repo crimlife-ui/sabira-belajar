@@ -3,7 +3,18 @@ import confetti from "canvas-confetti";
 import { Sparkles, Star, BookOpen, Hash, Calculator, Award, Moon } from "lucide-react";
 import { TopBar } from "./components/common/TopBar";
 import { ParentalModal } from "./components/common/ParentalModal";
-import { ProfileModal, UserProfile } from "./components/common/ProfileModal";
+import { ProfileModal } from "./components/common/ProfileModal";
+import {
+  UserProfile,
+  migrateLegacyStorage,
+  loadProfiles,
+  saveProfiles,
+  loadActiveProfileId,
+  saveActiveProfileId,
+  loadStars,
+  saveStars,
+  removeStars,
+} from "./utils/profileStore";
 import { LetterExplorer } from "./components/letters/LetterExplorer";
 import { VowelSyllableReader } from "./components/letters/VowelSyllableReader";
 import { SpellingGame } from "./components/letters/SpellingGame";
@@ -33,32 +44,22 @@ export const App: React.FC = () => {
   const [numberTab, setNumberTab] = useState<"explore" | "counting">("explore");
   const [hijaiyahTab, setHijaiyahTab] = useState<HijaiyahMode>("letters");
 
-  // Profile management (First-time onboarding detection)
-  const [profile, setProfile] = useState<UserProfile | null>(() => {
-    const saved = localStorage.getItem("sabira_profile");
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch {
-        return null;
-      }
-    }
-    return null;
+  // Profile management (multi-anak, migrasi data lama otomatis)
+  const [profiles, setProfiles] = useState<UserProfile[]>(() => {
+    migrateLegacyStorage();
+    return loadProfiles();
   });
+  const [activeProfileId, setActiveProfileId] = useState<string | null>(() =>
+    loadActiveProfileId()
+  );
+  const activeProfile = profiles.find((p) => p.id === activeProfileId) ?? null;
 
-  const [isProfileModalOpen, setIsProfileModalOpen] = useState(() => {
-    // If no profile saved yet, open modal immediately for first-time access
-    return localStorage.getItem("sabira_profile") === null;
-  });
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(() => profiles.length === 0);
+  const [isFirstTimeProfile, setIsFirstTimeProfile] = useState(() => profiles.length === 0);
 
-  const [isFirstTimeProfile, setIsFirstTimeProfile] = useState(() => {
-    return localStorage.getItem("sabira_profile") === null;
-  });
-
-  const [stars, setStars] = useState<number>(() => {
-    const saved = localStorage.getItem("sabira_stars");
-    return saved ? parseInt(saved, 10) : 3;
-  });
+  const [stars, setStars] = useState<number>(() =>
+    activeProfileId ? loadStars(activeProfileId) : 0
+  );
 
   const [soundEnabled, setSoundEnabled] = useState<boolean>(() => {
     const saved = localStorage.getItem("sabira_sound");
@@ -86,7 +87,9 @@ export const App: React.FC = () => {
   const handleEarnStar = () => {
     setStars((prev) => {
       const next = prev + 1;
-      localStorage.setItem("sabira_stars", String(next));
+      if (activeProfileId) {
+        saveStars(activeProfileId, next);
+      }
 
       const newlyUnlocked = STICKERS_LIST.find((s) => s.requiredStars === next);
       if (newlyUnlocked) {
@@ -108,30 +111,66 @@ export const App: React.FC = () => {
 
   const handleResetProgress = () => {
     setStars(0);
-    localStorage.setItem("sabira_stars", "0");
+    if (activeProfileId) {
+      saveStars(activeProfileId, 0);
+    }
   };
 
   const handleToggleSound = () => {
     setSoundEnabled((prev) => !prev);
   };
 
-  const handleSaveProfile = (newProfile: UserProfile, isNewProfile?: boolean) => {
-    setProfile(newProfile);
-    localStorage.setItem("sabira_profile", JSON.stringify(newProfile));
-    
-    // Jika menambah profil baru, mulai progres baru dari awal (0 bintang)
-    if (isNewProfile) {
+  const handleSaveProfile = (newProfile: UserProfile, isNew: boolean) => {
+    if (isNew) {
+      // Anak baru: profil ditambahkan, aktif, dan mulai progres dari 0 bintang
+      const next = [...profiles, newProfile];
+      setProfiles(next);
+      saveProfiles(next);
+      setActiveProfileId(newProfile.id);
+      saveActiveProfileId(newProfile.id);
       setStars(0);
-      localStorage.setItem("sabira_stars", "0");
       setUnlockedCelebration(null);
+    } else {
+      const next = profiles.map((p) => (p.id === newProfile.id ? newProfile : p));
+      setProfiles(next);
+      saveProfiles(next);
     }
 
     setIsProfileModalOpen(false);
     setIsFirstTimeProfile(false);
   };
 
-  const childName = profile ? profile.name : "Sabira";
-  const childAvatar = profile ? profile.avatar : "👧🏻";
+  const handleSwitchProfile = (id: string) => {
+    setActiveProfileId(id);
+    saveActiveProfileId(id);
+    setStars(loadStars(id));
+  };
+
+  const handleDeleteProfile = (id: string) => {
+    const next = profiles.filter((p) => p.id !== id);
+    removeStars(id);
+    setProfiles(next);
+    saveProfiles(next);
+
+    if (next.length === 0) {
+      // Semua profil terhapus: kembali ke onboarding awal
+      setActiveProfileId(null);
+      saveActiveProfileId(null);
+      setStars(0);
+      setIsFirstTimeProfile(true);
+      return;
+    }
+
+    if (id === activeProfileId) {
+      const fallback = next[0];
+      setActiveProfileId(fallback.id);
+      saveActiveProfileId(fallback.id);
+      setStars(loadStars(fallback.id));
+    }
+  };
+
+  const childName = activeProfile ? activeProfile.name : "Sabira";
+  const childAvatar = activeProfile ? activeProfile.avatar : "👧🏻";
 
   const getScreenTitle = () => {
     switch (currentScreen) {
@@ -172,7 +211,7 @@ export const App: React.FC = () => {
         onBack={currentScreen !== "home" ? () => setCurrentScreen("home") : undefined}
         stars={stars}
         soundEnabled={soundEnabled}
-        profile={profile || undefined}
+        profile={activeProfile || undefined}
         onOpenProfile={() => {
           setIsFirstTimeProfile(false);
           setIsProfileModalOpen(true);
@@ -588,12 +627,15 @@ export const App: React.FC = () => {
         Sabira Belajar &bull; Teman Ceria Belajar Membaca & Menghitung
       </footer>
 
-      {/* Profile Modal (First-time onboarding & Edit) */}
+      {/* Profile Modal (Pilih anak, tambah, ubah & onboarding pertama) */}
       <ProfileModal
         isOpen={isProfileModalOpen}
         isFirstTime={isFirstTimeProfile}
-        initialProfile={profile || undefined}
-        onSave={handleSaveProfile}
+        profiles={profiles}
+        activeProfile={activeProfile || undefined}
+        onSaveProfile={handleSaveProfile}
+        onSwitchProfile={handleSwitchProfile}
+        onDeleteProfile={handleDeleteProfile}
         onClose={() => setIsProfileModalOpen(false)}
       />
 
