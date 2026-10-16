@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import confetti from "canvas-confetti";
-import { Undo2, Trash2, CheckCircle2, ChevronLeft, ChevronRight, Brush } from "lucide-react";
+import { Undo2, Trash2, CheckCircle2, ChevronLeft, ChevronRight, Brush, Target } from "lucide-react";
 import { sounds } from "../../utils/audioEffects";
 import { speech } from "../../utils/speechHelper";
 import { ALPHABET_LIST } from "../../data/alphabetData";
@@ -16,7 +16,11 @@ interface Point {
   y: number;
 }
 
-const COMPLETE_COVERAGE = 0.65; // Toleransi ramah anak: 65% area huruf terisi
+const COMPLETE_COVERAGE = 0.55; // Gerbang kedua (cakupan total). Gerbang UTAMA: setiap area huruf wajib terisi
+const BRUSH_RATIO = 0.12; // Ketebalan kuas relatif terhadap sisi kanvas
+const REGION_GRID = 6; // Pembagian area huruf per sisi; setiap sel berisi huruf wajib terisi
+const CELL_COVER_RATIO = 0.35; // Sel dianggap terisi jika ≥35% piksel hurufnya tersentuh
+const CELL_MIN_INK = 40; // Sel dihitung sebagai bagian huruf jika isinya ≥ piksel ini
 const STARS_EVERY = 2; // 1 bintang setiap 2 huruf selesai
 
 export const TracingGame: React.FC<TracingGameProps> = ({ charset, onEarnStar }) => {
@@ -25,7 +29,9 @@ export const TracingGame: React.FC<TracingGameProps> = ({ charset, onEarnStar })
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [coverage, setCoverage] = useState(0);
-  const [completed, setCompleted] = useState<Set<number>>(new Set());
+  const [regionsDone, setRegionsDone] = useState(false);
+  const [letterCase, setLetterCase] = useState<"upper" | "lower">("upper");
+  const [completed, setCompleted] = useState<Set<string>>(new Set());
   const [justCompleted, setJustCompleted] = useState(false);
 
   const containerRef = useRef<HTMLDivElement>(null);
@@ -34,6 +40,8 @@ export const TracingGame: React.FC<TracingGameProps> = ({ charset, onEarnStar })
   // Offscreen: mask huruf & mask goresan untuk hitung persentase
   const glyphMaskRef = useRef<HTMLCanvasElement | null>(null);
   const strokeMaskRef = useRef<HTMLCanvasElement | null>(null);
+  // Pusat bagian huruf yang belum terisi (untuk titik bantuan di kanvas panduan)
+  const uncoveredPointsRef = useRef<Point[]>([]);
   const strokesRef = useRef<Point[][]>([]);
   const drawingRef = useRef(false);
   const hueRef = useRef(0);
@@ -43,10 +51,17 @@ export const TracingGame: React.FC<TracingGameProps> = ({ charset, onEarnStar })
   const completedFlagRef = useRef(false);
 
   const item = items[currentIndex];
+  const letterChar = charset === "letters" ? (item as (typeof ALPHABET_LIST)[number]).letter : "";
   const glyph =
     charset === "letters"
-      ? (item as (typeof ALPHABET_LIST)[number]).letter
+      ? letterCase === "lower"
+        ? letterChar.toLowerCase()
+        : letterChar
       : String((item as (typeof NUMBERS_LIST)[number]).number);
+
+  // Kunci progres selesai: huruf besar, huruf kecil, dan angka tercatat terpisah
+  const doneKey = (idx: number) =>
+    charset === "letters" ? `${letterCase === "lower" ? "l" : "u"}-${idx}` : `n-${idx}`;
 
   const canvasSize = () => paintCanvasRef.current?.width ?? 0;
 
@@ -76,6 +91,19 @@ export const TracingGame: React.FC<TracingGameProps> = ({ charset, onEarnStar })
     ctx.font = `${Math.round(size * 0.72)}px Fredoka, "Quicksand", sans-serif`;
     ctx.strokeText(glyph, size / 2, size / 2 + size * 0.02);
     ctx.restore();
+    // Titik bantuan: tandai bagian huruf yang belum tersentuh goresan
+    ctx.save();
+    const dotR = size * BRUSH_RATIO * 0.3;
+    for (const p of uncoveredPointsRef.current) {
+      ctx.beginPath();
+      ctx.arc(p.x * size, p.y * size, dotR, 0, Math.PI * 2);
+      ctx.fillStyle = "rgba(244, 63, 94, 0.45)";
+      ctx.fill();
+      ctx.lineWidth = Math.max(2, size * 0.008);
+      ctx.strokeStyle = "#ffffff";
+      ctx.stroke();
+    }
+    ctx.restore();
   }, [glyph]);
 
   const redrawStrokes = useCallback(() => {
@@ -91,7 +119,7 @@ export const TracingGame: React.FC<TracingGameProps> = ({ charset, onEarnStar })
     mctx.strokeStyle = "#000";
     mctx.fillStyle = "#000";
 
-    const brush = size * 0.13;
+    const brush = size * BRUSH_RATIO;
     pctx.lineCap = "round";
     pctx.lineJoin = "round";
     mctx.lineCap = "round";
@@ -129,6 +157,98 @@ export const TracingGame: React.FC<TracingGameProps> = ({ charset, onEarnStar })
     });
   }, []);
 
+  const evaluateCoverage = useCallback(() => {
+    const glyphMask = glyphMaskRef.current;
+    const strokeMask = strokeMaskRef.current;
+    if (!glyphMask || !strokeMask) return null;
+    const gctx = glyphMask.getContext("2d");
+    const sctx = strokeMask.getContext("2d");
+    if (!gctx || !sctx) return null;
+    const size = glyphMask.width;
+    if (!size) return null;
+
+    const glyphData = gctx.getImageData(0, 0, size, size).data;
+    const strokeData = sctx.getImageData(0, 0, size, size).data;
+
+    // Bounding box tinta huruf
+    let minX = size, minY = size, maxX = -1, maxY = -1;
+    for (let y = 0; y < size; y++) {
+      for (let x = 0; x < size; x++) {
+        if (glyphData[(y * size + x) * 4 + 3] > 128) {
+          if (x < minX) minX = x;
+          if (x > maxX) maxX = x;
+          if (y < minY) minY = y;
+          if (y > maxY) maxY = y;
+        }
+      }
+    }
+    if (maxX < minX) {
+      setCoverage(0);
+      setRegionsDone(false);
+      return { pct: 0, allRegions: false };
+    }
+
+    // Cakupan total + rekap per sel area huruf
+    const cellW = (maxX - minX + 1) / REGION_GRID;
+    const cellH = (maxY - minY + 1) / REGION_GRID;
+    const cellInk = new Array(REGION_GRID * REGION_GRID).fill(0);
+    const cellCover = new Array(REGION_GRID * REGION_GRID).fill(0);
+    let total = 0;
+    let covered = 0;
+    for (let y = minY; y <= maxY; y++) {
+      for (let x = minX; x <= maxX; x++) {
+        const i = (y * size + x) * 4;
+        if (glyphData[i + 3] > 128) {
+          total++;
+          const gx = Math.min(REGION_GRID - 1, Math.floor((x - minX) / cellW));
+          const gy = Math.min(REGION_GRID - 1, Math.floor((y - minY) / cellH));
+          const ci = gy * REGION_GRID + gx;
+          cellInk[ci]++;
+          if (strokeData[i + 3] > 128) {
+            covered++;
+            cellCover[ci]++;
+          }
+        }
+      }
+    }
+    const pct = total > 0 ? covered / total : 0;
+    setCoverage(pct);
+
+    // Gerbang utama: setiap sel area huruf harus terisi ≥ CELL_COVER_RATIO,
+    // jadi huruf baru "selesai" kalau semua bagiannya benar-benar ditarik
+    // (A tetap belum selesai walau baru dua kakinya yang digambar).
+    const dots: Point[] = [];
+    let allRegions = true;
+    for (let gy = 0; gy < REGION_GRID; gy++) {
+      for (let gx = 0; gx < REGION_GRID; gx++) {
+        const ci = gy * REGION_GRID + gx;
+        if (cellInk[ci] < CELL_MIN_INK) continue;
+        if (cellCover[ci] / cellInk[ci] >= CELL_COVER_RATIO) continue;
+        allRegions = false;
+        // Titik bantuan di pusat bagian sel yang belum terisi
+        let sx = 0, sy = 0, n = 0;
+        const x0 = minX + gx * cellW;
+        const y0 = minY + gy * cellH;
+        const x1 = Math.min(maxX + 1, x0 + cellW);
+        const y1 = Math.min(maxY + 1, y0 + cellH);
+        for (let y = Math.floor(y0); y < y1; y++) {
+          for (let x = Math.floor(x0); x < x1; x++) {
+            const i = (y * size + x) * 4;
+            if (glyphData[i + 3] > 128 && strokeData[i + 3] <= 128) {
+              sx += x;
+              sy += y;
+              n++;
+            }
+          }
+        }
+        if (n > 0) dots.push({ x: sx / n / size, y: sy / n / size });
+      }
+    }
+    uncoveredPointsRef.current = dots;
+    setRegionsDone(allRegions);
+    return { pct, allRegions };
+  }, []);
+
   // ---------- Ukuran kanvas & mask ----------
   const setupCanvases = useCallback(() => {
     const container = containerRef.current;
@@ -162,32 +282,7 @@ export const TracingGame: React.FC<TracingGameProps> = ({ charset, onEarnStar })
     }
     drawGuide();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [drawGuide, redrawStrokes, glyph]);
-
-  const evaluateCoverage = useCallback(() => {
-    const glyphMask = glyphMaskRef.current;
-    const strokeMask = strokeMaskRef.current;
-    if (!glyphMask || !strokeMask) return;
-    const gctx = glyphMask.getContext("2d");
-    const sctx = strokeMask.getContext("2d");
-    if (!gctx || !sctx) return;
-    const size = glyphMask.width;
-    if (!size) return;
-
-    const glyphData = gctx.getImageData(0, 0, size, size).data;
-    const strokeData = sctx.getImageData(0, 0, size, size).data;
-    let total = 0;
-    let covered = 0;
-    for (let i = 3; i < glyphData.length; i += 4) {
-      if (glyphData[i] > 128) {
-        total++;
-        if (strokeData[i] > 128) covered++;
-      }
-    }
-    const pct = total > 0 ? covered / total : 0;
-    setCoverage(pct);
-    return pct;
-  }, []);
+  }, [drawGuide, redrawStrokes, evaluateCoverage, glyph]);
 
   // ---------- Interaksi pointer ----------
   const getPointerPos = (e: React.PointerEvent<HTMLCanvasElement>): Point => {
@@ -205,7 +300,7 @@ export const TracingGame: React.FC<TracingGameProps> = ({ charset, onEarnStar })
     const size = canvasSize();
     if (!pctx || !mctx || !size) return;
 
-    const brush = size * 0.13;
+    const brush = size * BRUSH_RATIO;
     pctx.lineCap = "round";
     pctx.lineJoin = "round";
     mctx.lineCap = "round";
@@ -262,11 +357,12 @@ export const TracingGame: React.FC<TracingGameProps> = ({ charset, onEarnStar })
   const handlePointerUp = () => {
     if (!drawingRef.current) return;
     drawingRef.current = false;
-    const pct = evaluateCoverage() ?? 0;
-    if (pct >= COMPLETE_COVERAGE && !completedFlagRef.current) {
+    const result = evaluateCoverage();
+    drawGuide();
+    if (result?.allRegions && result.pct >= COMPLETE_COVERAGE && !completedFlagRef.current) {
       completedFlagRef.current = true;
       setJustCompleted(true);
-      setCompleted((prev) => new Set(prev).add(currentIndex));
+      setCompleted((prev) => new Set(prev).add(doneKey(currentIndex)));
       sounds.playFanfare();
       confetti({ particleCount: 90, spread: 90, origin: { y: 0.45 } });
       const label =
@@ -289,6 +385,7 @@ export const TracingGame: React.FC<TracingGameProps> = ({ charset, onEarnStar })
     strokesRef.current.pop();
     redrawStrokes();
     evaluateCoverage();
+    drawGuide();
   };
 
   const handleClear = () => {
@@ -298,6 +395,14 @@ export const TracingGame: React.FC<TracingGameProps> = ({ charset, onEarnStar })
     setJustCompleted(false);
     redrawStrokes();
     evaluateCoverage();
+    drawGuide();
+  };
+
+  const switchCase = (c: "upper" | "lower") => {
+    if (letterCase === c) return;
+    sounds.playPop();
+    setLetterCase(c);
+    // Reset kanvas & goresan ditangani effect perubahan glyph
   };
 
   const goToIndex = (idx: number) => {
@@ -311,7 +416,8 @@ export const TracingGame: React.FC<TracingGameProps> = ({ charset, onEarnStar })
     const target = items[safe];
     if (charset === "letters") {
       const l = target as (typeof ALPHABET_LIST)[number];
-      speech.speak(`Huruf ${l.letter}! ${l.letter} untuk ${l.word}`, 0.9, 1.15);
+      const g = letterCase === "lower" ? l.letter.toLowerCase() : l.letter;
+      speech.speak(`Huruf ${g}! ${l.letter} untuk ${l.word}`, 0.9, 1.15);
     } else {
       const n = target as (typeof NUMBERS_LIST)[number];
       speech.speak(`Angka ${n.word}! Ayo jiplak angka ${n.number}`, 0.9, 1.15);
@@ -339,7 +445,7 @@ export const TracingGame: React.FC<TracingGameProps> = ({ charset, onEarnStar })
     };
   }, [setupCanvases]);
 
-  // Saat pindah huruf/angka: perbarui mask & bersihkan goresan
+  // Saat pindah huruf/angka (atau ganti besar/kecil): perbarui mask & bersihkan goresan
   useEffect(() => {
     const size = canvasSize();
     const gctx = glyphMaskRef.current?.getContext("2d");
@@ -347,17 +453,43 @@ export const TracingGame: React.FC<TracingGameProps> = ({ charset, onEarnStar })
     strokesRef.current = [];
     completedFlagRef.current = false;
     setJustCompleted(false);
-    setCoverage(0);
     redrawStrokes();
+    evaluateCoverage();
     drawGuide();
-  }, [glyph, redrawStrokes, drawGuide]);
+  }, [glyph, redrawStrokes, drawGuide, evaluateCoverage]);
 
   const pctLabel = Math.round(coverage * 100);
+  const isComplete = pctLabel >= COMPLETE_COVERAGE * 100 && regionsDone;
+  const doneInView = items.filter((_, idx) => completed.has(doneKey(idx))).length;
 
   return (
     <div className="space-y-4">
       {/* Pemilih huruf/angka */}
       <div className="bg-white/80 backdrop-blur rounded-2xl border border-pink-200 shadow-sm p-3">
+        {charset === "letters" && (
+          <div className="flex gap-1.5 mb-2">
+            <button
+              onClick={() => switchCase("upper")}
+              className={`flex-1 py-2 rounded-xl font-black text-xs transition-all cursor-pointer border-2 ${
+                letterCase === "upper"
+                  ? "bg-gradient-to-r from-pink-500 to-rose-500 text-white border-pink-400 shadow-md"
+                  : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-pink-50"
+              }`}
+            >
+              ABC Besar
+            </button>
+            <button
+              onClick={() => switchCase("lower")}
+              className={`flex-1 py-2 rounded-xl font-black text-xs transition-all cursor-pointer border-2 ${
+                letterCase === "lower"
+                  ? "bg-gradient-to-r from-pink-500 to-rose-500 text-white border-pink-400 shadow-md"
+                  : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-pink-50"
+              }`}
+            >
+              abc Kecil
+            </button>
+          </div>
+        )}
         <div
           className={`grid gap-1.5 ${
             charset === "letters" ? "grid-cols-7 sm:grid-cols-9" : "grid-cols-5 sm:grid-cols-10"
@@ -365,7 +497,7 @@ export const TracingGame: React.FC<TracingGameProps> = ({ charset, onEarnStar })
         >
           {items.map((it, idx) => {
             const isActive = idx === currentIndex;
-            const isDone = completed.has(idx);
+            const isDone = completed.has(doneKey(idx));
             return (
               <button
                 key={idx}
@@ -376,7 +508,11 @@ export const TracingGame: React.FC<TracingGameProps> = ({ charset, onEarnStar })
                     : "bg-slate-50 hover:bg-pink-50 border-slate-200 text-slate-700"
                 }`}
               >
-                {charset === "letters" ? (it as (typeof ALPHABET_LIST)[number]).letter : (it as (typeof NUMBERS_LIST)[number]).number}
+                {charset === "letters"
+                  ? letterCase === "lower"
+                    ? (it as (typeof ALPHABET_LIST)[number]).letter.toLowerCase()
+                    : (it as (typeof ALPHABET_LIST)[number]).letter
+                  : (it as (typeof NUMBERS_LIST)[number]).number}
                 {isDone && (
                   <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-emerald-500 text-white rounded-full flex items-center justify-center text-[9px]">
                     ✓
@@ -400,12 +536,12 @@ export const TracingGame: React.FC<TracingGameProps> = ({ charset, onEarnStar })
               <div>
                 <p className="font-black text-slate-800 text-lg leading-tight">
                   {charset === "letters"
-                    ? `Huruf ${(item as (typeof ALPHABET_LIST)[number]).letter}`
+                    ? `Huruf ${glyph}`
                     : `Angka ${(item as (typeof NUMBERS_LIST)[number]).word}`}
                 </p>
                 <p className="text-xs font-bold text-slate-500">
                   {charset === "letters"
-                    ? `${(item as (typeof ALPHABET_LIST)[number]).letter} untuk ${(item as (typeof ALPHABET_LIST)[number]).word}`
+                    ? `${glyph} untuk ${(item as (typeof ALPHABET_LIST)[number]).word}`
                     : "Jiplak dengan jarimu"}
                 </p>
               </div>
@@ -443,20 +579,26 @@ export const TracingGame: React.FC<TracingGameProps> = ({ charset, onEarnStar })
                 <Brush className="w-3.5 h-3.5 text-pink-500" />
                 Isi hurufnya
               </span>
-              <span className={pctLabel >= COMPLETE_COVERAGE * 100 ? "text-emerald-600" : ""}>
+              <span className={isComplete ? "text-emerald-600" : ""}>
                 {pctLabel}%
               </span>
             </div>
             <div className="h-3 bg-slate-100 rounded-full overflow-hidden border border-slate-200">
               <div
                 className={`h-full rounded-full transition-all duration-300 ${
-                  pctLabel >= COMPLETE_COVERAGE * 100
+                  isComplete
                     ? "bg-gradient-to-r from-emerald-400 to-teal-500"
                     : "bg-gradient-to-r from-pink-400 via-rose-400 to-purple-400"
                 }`}
                 style={{ width: `${Math.min(100, pctLabel)}%` }}
               />
             </div>
+            {!regionsDone && !justCompleted && coverage > 0 && (
+              <p className="flex items-center gap-1 text-[11px] font-bold text-rose-500">
+                <Target className="w-3.5 h-3.5" />
+                Masih ada bagian yang kosong — isi titik pinknya!
+              </p>
+            )}
             <div className="flex items-center justify-between gap-2 pt-1">
               <div className="flex gap-2">
                 <button
@@ -499,15 +641,15 @@ export const TracingGame: React.FC<TracingGameProps> = ({ charset, onEarnStar })
           <div className="bg-gradient-to-br from-pink-50 to-rose-50 rounded-2xl border-2 border-pink-200 p-4">
             <p className="font-black text-pink-700 text-sm mb-1">Cara Main 🖍️</p>
             <ul className="text-xs font-semibold text-pink-600/90 space-y-1.5 list-disc list-inside">
-              <li>Warnai huruf besar dengan jarimu!</li>
-              <li>Isi sampai progress jadi hijau.</li>
+              <li>Warnai huruf dengan jarimu!</li>
+              <li>Titik pink = bagian yang belum diwarnai.</li>
               <li>Kumpulkan 1 ⭐ setiap {STARS_EVERY} huruf selesai.</li>
             </ul>
           </div>
           <div className="bg-white/80 rounded-2xl border-2 border-emerald-200 p-4 text-center">
             <p className="text-xs font-bold text-slate-500">Sudah Selesai</p>
             <p className="text-2xl font-black text-emerald-600">
-              {completed.size}
+              {doneInView}
               <span className="text-base text-slate-400">/{items.length}</span>
             </p>
           </div>
