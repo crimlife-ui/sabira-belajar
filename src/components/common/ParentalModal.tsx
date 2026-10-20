@@ -33,6 +33,7 @@ const MODULE_LABELS: Record<StatsModule, string> = {
   math: "Matematika ➕➖",
   hijaiyahQuiz: "Kuis Hijaiyah 🎯",
   reading: "Belajar Membaca 📖",
+  english: "Bahasa Inggris 🗽",
 };
 
 function formatLastPlayed(ts: number): string {

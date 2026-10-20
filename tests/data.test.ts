@@ -17,6 +17,13 @@ import {
   getLetterUnits,
   getLetterName,
 } from "../src/data/readingData";
+import {
+  ENGLISH_COLORS,
+  ENGLISH_SHAPES,
+  ENGLISH_WORDS,
+  ENGLISH_WORD_CATEGORIES,
+  ENGLISH_SENTENCES,
+} from "../src/data/englishData";
 
 describe("ALPHABET_LIST", () => {
   it("memuat 26 huruf A-Z tanpa duplikat", () => {
@@ -207,6 +214,61 @@ describe("getLetterUnits", () => {
           expect(getLetterName(unit).length).toBeGreaterThan(0);
         }
       }
+    }
+  });
+});
+
+describe("ENGLISH_COLORS & ENGLISH_SHAPES", () => {
+  it("memuat 10 warna unik dengan hex valid & arti Indonesia", () => {
+    expect(ENGLISH_COLORS).toHaveLength(10);
+    expect(new Set(ENGLISH_COLORS.map((c) => c.en.toLowerCase())).size).toBe(10);
+    for (const c of ENGLISH_COLORS) {
+      expect(c.en).toMatch(/^[A-Z][a-z]+$/);
+      expect(c.id.length).toBeGreaterThan(0);
+      expect(c.emoji.length).toBeGreaterThan(0);
+      expect(c.hex).toMatch(/^#[0-9a-fA-F]{6}$/);
+    }
+  });
+
+  it("memuat 8 bentuk unik & tidak ada nama ganda", () => {
+    expect(ENGLISH_SHAPES).toHaveLength(8);
+    const names = ENGLISH_SHAPES.map((s) => s.en.toLowerCase());
+    expect(new Set(names).size).toBe(8);
+    for (const s of ENGLISH_SHAPES) {
+      expect(s.id.length).toBeGreaterThan(0);
+      expect(s.emoji.length).toBeGreaterThan(0);
+    }
+  });
+});
+
+describe("ENGLISH_WORDS", () => {
+  it("kata unik, berkategorikan valid, dan lengkap dengan arti & emoji", () => {
+    const names = ENGLISH_WORDS.map((w) => w.en.toLowerCase());
+    expect(new Set(names).size).toBe(names.length);
+    for (const w of ENGLISH_WORDS) {
+      expect(ENGLISH_WORD_CATEGORIES.some((c) => c.id === w.category)).toBe(true);
+      expect(w.id.length).toBeGreaterThan(0);
+      expect(w.emoji.length).toBeGreaterThan(0);
+    }
+  });
+
+  it("setiap kategori punya minimal 6 kata", () => {
+    for (const cat of ENGLISH_WORD_CATEGORIES) {
+      const count = ENGLISH_WORDS.filter((w) => w.category === cat.id).length;
+      expect(count).toBeGreaterThanOrEqual(6);
+    }
+  });
+});
+
+describe("ENGLISH_SENTENCES", () => {
+  it("kalimat sederhana 2-6 kata dengan terjemahan & emoji", () => {
+    expect(ENGLISH_SENTENCES.length).toBeGreaterThanOrEqual(10);
+    for (const s of ENGLISH_SENTENCES) {
+      const wordCount = s.text.replace(/[!?,.]/g, "").split(" ").filter(Boolean).length;
+      expect(wordCount).toBeGreaterThanOrEqual(2);
+      expect(wordCount).toBeLessThanOrEqual(6);
+      expect(s.translation.length).toBeGreaterThan(0);
+      expect(s.emoji.length).toBeGreaterThan(0);
     }
   });
 });

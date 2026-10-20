@@ -18,6 +18,7 @@ export const VOICE_PERSONAS: VoicePersona[] = [
 
 class SpeechHelper {
   private voice: SpeechSynthesisVoice | null = null;
+  private englishVoice: SpeechSynthesisVoice | null = null;
   private speechEnabled = true;
   private selectedVoiceURI: string | null = null;
   private currentPersonaId: string = "ceria";
@@ -73,6 +74,19 @@ class SpeechHelper {
     } else {
       this.voice = voices[0] || null;
     }
+
+    this.pickEnglishVoice(voices);
+  }
+
+  // Voice khusus bahasa Inggris untuk modul English (tidak mengganggu
+  // voice Indonesia yang dipakai persona di seluruh aplikasi).
+  private pickEnglishVoice(voices: SpeechSynthesisVoice[]) {
+    if (this.englishVoice && this.englishVoice.lang.startsWith("en")) return;
+    const preferred =
+      voices.find((v) => v.lang === "en-US") ||
+      voices.find((v) => v.lang.startsWith("en")) ||
+      null;
+    this.englishVoice = preferred;
   }
 
   public getAvailableVoices(): SpeechSynthesisVoice[] {
@@ -186,6 +200,59 @@ class SpeechHelper {
     } else {
       this.speak(`Huruf ${name}`, 0.9, 1.15);
     }
+  }
+
+  // Bicara bahasa Inggris memakai voice en-* (fallback: voice apa pun dengan
+  // lang en-US agar mesin TTS memilih aksen Inggris bila tersedia).
+  public speakEnglish(text: string, customRate?: number, customPitch?: number) {
+    if (!this.speechEnabled) return;
+    if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
+
+    try {
+      if (window.speechSynthesis.speaking || window.speechSynthesis.pending) {
+        window.speechSynthesis.cancel();
+      }
+      // Daftar voice bisa terisi belakangan — coba ambil lagi.
+      if (!this.englishVoice) {
+        this.pickEnglishVoice(window.speechSynthesis.getVoices());
+      }
+      const utterance = new SpeechSynthesisUtterance(text);
+      if (this.englishVoice) {
+        utterance.voice = this.englishVoice;
+        utterance.lang = this.englishVoice.lang;
+      } else {
+        utterance.lang = "en-US";
+      }
+
+      const persona = this.getCurrentPersona();
+      utterance.rate = customRate ?? Math.min(persona.rate, 0.85);
+      utterance.pitch = customPitch ?? persona.pitch;
+
+      window.speechSynthesis.speak(utterance);
+    } catch {
+      // Ignore speech errors
+    }
+  }
+
+  public praiseEnglish() {
+    const praises = [
+      "Great job!",
+      "Well done!",
+      "Excellent!",
+      "Awesome!",
+      "You got it!",
+      "Amazing!",
+    ];
+    this.speakEnglish(praises[Math.floor(Math.random() * praises.length)], 0.9, 1.15);
+  }
+
+  public encourageEnglish() {
+    const encourages = [
+      "Try again, you can do it!",
+      "Almost right! One more time!",
+      "Good try! Let's try once more!",
+    ];
+    this.speakEnglish(encourages[Math.floor(Math.random() * encourages.length)], 0.9, 1.15);
   }
 
   public speakArabicNumber(arabicName: string, latinNum: number, indonesianName: string) {
