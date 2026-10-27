@@ -25,6 +25,7 @@ import { BalloonSpellingGame } from "./components/letters/BalloonSpellingGame";
 import { NumberExplorer } from "./components/numbers/NumberExplorer";
 import { CountingGame } from "./components/numbers/CountingGame";
 import { VisualMathGame } from "./components/math/VisualMathGame";
+import { MathTable } from "./components/math/MathTable";
 import { HijaiyahExplorer } from "./components/hijaiyah/HijaiyahExplorer";
 import { HijaiyahReadingPractice } from "./components/hijaiyah/HijaiyahReadingPractice";
 import { HijaiyahConnectedLetters } from "./components/hijaiyah/HijaiyahConnectedLetters";
@@ -55,6 +56,7 @@ export const App: React.FC = () => {
   const [currentScreen, setCurrentScreen] = useState<Screen>("home");
   const [letterTab, setLetterTab] = useState<LetterMode>("explore");
   const [numberTab, setNumberTab] = useState<"explore" | "tracing" | "counting">("explore");
+  const [mathTab, setMathTab] = useState<"quiz" | "table">("quiz");
   const [hijaiyahTab, setHijaiyahTab] = useState<HijaiyahMode>("letters");
 
   // Profile management (multi-anak, migrasi data lama otomatis)
@@ -294,7 +296,9 @@ export const App: React.FC = () => {
           ? "✍️ Jiplak Angka 0-9"
           : "🔢 Menghitung Benda";
       case "math":
-        return "➕➖ Matematika Ceria";
+        return mathTab === "quiz"
+          ? "➕➖ Matematika Ceria"
+          : "📊 Tabel Hitung × ÷ + −";
       case "reading":
         return "📖 Belajar Membaca";
       case "english":
@@ -509,8 +513,13 @@ export const App: React.FC = () => {
               <button
                 onClick={() => {
                   sounds.playPop();
-                  speech.speak("Ayo bermain penjumlahan dan pengurangan!", 0.9, 1.15);
+                  speech.speak(
+                    "Ayo bermain tambah, kurang, kali, bagi, dan lihat tabel hitung!",
+                    0.9,
+                    1.15
+                  );
                   setCurrentScreen("math");
+                  setMathTab("quiz");
                 }}
                 className="group relative overflow-hidden p-6 rounded-3xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white shadow-xl border-4 border-indigo-300/60 hover:border-white transition-all duration-300 hover:scale-[1.02] active:scale-98 text-left cursor-pointer flex flex-col justify-between min-h-[12rem]"
               >
@@ -519,7 +528,7 @@ export const App: React.FC = () => {
                     <Calculator className="w-8 h-8 text-white" />
                   </div>
                   <span className="text-4xl group-hover:scale-125 transition-transform">
-                    ➕➖
+                    🧮
                   </span>
                 </div>
                 <div className="mt-4">
@@ -527,7 +536,7 @@ export const App: React.FC = () => {
                     <span>Matematika Ceria</span>
                   </h3>
                   <p className="text-white/85 text-sm font-medium mt-1">
-                    Operasi tambah (+) & kurang (-) dengan visual balon dan buah.
+                    Kuis tambah & kurang dengan visual, plus tabel hitung × ÷ + − angka 1-10.
                   </p>
                 </div>
               </button>
@@ -742,7 +751,46 @@ export const App: React.FC = () => {
 
         {/* ===================== SCREEN: MATH ===================== */}
         {currentScreen === "math" && (
-          <VisualMathGame onEarnStar={handleEarnStar} onBackToHome={() => setCurrentScreen("home")} />
+          <div className="space-y-4">
+            {/* Sub Tabs: Kuis & Tabel Hitung */}
+            <div className="flex justify-center gap-2 max-w-md mx-auto p-1.5 bg-white/80 backdrop-blur rounded-2xl border border-indigo-200 shadow-sm">
+              <button
+                onClick={() => {
+                  sounds.playPop();
+                  setMathTab("quiz");
+                }}
+                className={`flex-1 py-2.5 rounded-xl font-black text-sm sm:text-base transition-all cursor-pointer ${
+                  mathTab === "quiz"
+                    ? "bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-md"
+                    : "text-slate-600 hover:bg-indigo-50"
+                }`}
+              >
+                🎯 Kuis Ceria
+              </button>
+              <button
+                onClick={() => {
+                  sounds.playPop();
+                  setMathTab("table");
+                }}
+                className={`flex-1 py-2.5 rounded-xl font-black text-sm sm:text-base transition-all cursor-pointer ${
+                  mathTab === "table"
+                    ? "bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-md"
+                    : "text-slate-600 hover:bg-indigo-50"
+                }`}
+              >
+                📊 Tabel Hitung
+              </button>
+            </div>
+
+            {mathTab === "quiz" ? (
+              <VisualMathGame
+                onEarnStar={handleEarnStar}
+                onBackToHome={() => setCurrentScreen("home")}
+              />
+            ) : (
+              <MathTable />
+            )}
+          </div>
         )}
 
         {/* ===================== SCREEN: HIJAIYAH ===================== */}

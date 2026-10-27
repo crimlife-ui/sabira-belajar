@@ -66,7 +66,7 @@
 
 ---
 
-### Modul 3: Berhitung Dasar (Matematika Ceria: + dan -)
+### Modul 3: Berhitung Dasar (Matematika Ceria: +, −, ×, ÷)
 1. **Penjumlahan Visual (+)**:
    - Menggunakan analogi penggabungan benda konkret:
      - Contoh: "2 Balon Merah" + "1 Balon Biru" -> Dikelompokkan bersama -> "Ada berapa balon semuanya?".
@@ -78,6 +78,12 @@
    - **Level 1 (Mudah)**: Operasi angka 1 – 5 dengan visual objek nyata.
    - **Level 2 (Sedang)**: Operasi angka 1 – 10 dengan visual objek nyata.
    - **Level 3 (Tantangan)**: Penjumlahan & Pengurangan angka murni 1 – 10 (disertai tombol bantuan visual jika anak bingung).
+4. **Tabel Hitung (×, ÷, +, −)**:
+   - Tabel referensi untuk angka 1–10 pada empat operasi: perkalian, pembagian, penjumlahan, dan pengurangan.
+   - Dimainkan bersama 10 karakter hewan ("Kebun Hewan Berhitung", Tikus 1 → Jerapah 10, urut dari kecil ke besar) yang **membawa angkanya di perut** — Kura-Kura membawanya di **punggung/cangkang** heksagon — sebagai representasi konkret dari setiap bilangan pada tabel.
+   - Pemilihan angka tabel berupa pilih teman hewan; mascot pada header dapat disapa untuk mendengar nama & angkanya.
+   - Setiap baris (parade hewan: hewan-kiri → simbol → hewan-kanan → hasil) dapat diketuk untuk mendengar cara membacanya (misal: "3 kali 4 sama dengan 12") disertai animasi hewan melompat.
+   - Tombol "Dengar Semua" membacakan seluruh tabel berurutan dengan sorotan pada baris yang sedang dibaca.
 
 ---
 

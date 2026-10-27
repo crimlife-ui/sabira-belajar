@@ -81,6 +81,24 @@
   }
 }
 
+@keyframes critter-jiggle {
+  0%, 100% {
+    transform: translateY(0) rotate(0deg) scale(1);
+  }
+  20% {
+    transform: translateY(-11px) rotate(-7deg) scale(1.06);
+  }
+  40% {
+    transform: translateY(0) rotate(5deg) scale(1);
+  }
+  60% {
+    transform: translateY(-7px) rotate(-4deg) scale(1.04);
+  }
+  80% {
+    transform: translateY(0) rotate(2deg) scale(1);
+  }
+}
+
 @keyframes pop-burst {
   0% {
     transform: scale(0.2);
@@ -110,4 +128,8 @@
 
 .animate-pop-burst {
   animation: pop-burst 0.4s ease-out forwards;
+}
+
+.animate-critter-jiggle {
+  animation: critter-jiggle 0.9s ease-in-out 2;
 }
