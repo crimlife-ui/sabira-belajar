@@ -22,6 +22,9 @@ class SpeechHelper {
   private speechEnabled = true;
   private selectedVoiceURI: string | null = null;
   private currentPersonaId: string = "ceria";
+  // Nomor sesi ucapan: setiap speak()/speakSequence() baru menaikkannya agar
+  // rantai bacaan lama otomatis batal tanpa perlu timer manual di komponen.
+  private currentSeq = 0;
 
   constructor() {
     if (typeof window !== "undefined") {
@@ -141,34 +144,154 @@ class SpeechHelper {
     return this.speechEnabled;
   }
 
-  public speak(text: string, customRate?: number, customPitch?: number) {
-    if (!this.speechEnabled) return;
-    if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
+  // Mesin ucapan bersama: menangani cancel yang aman (iOS Safari menggulir
+  // selamanya bila cancel() tepat sebelum speak(); Android Chrome menjalankan
+  // cancel() secara asinkron sehingga speak() yang terlalu cepat menabrak
+  // ucapan lama — suara jadi tumpang tindih/kepotong). Karena itu: hanya
+  // cancel bila memang sedang bersuara, lalu beri jeda kecil sebelum mulai.
+  private speakWithEnd(
+    text: string,
+    customRate: number | undefined,
+    customPitch: number | undefined,
+    onEnd?: () => void,
+    isCancelled?: () => boolean
+  ) {
+    if (!this.speechEnabled) {
+      if (onEnd) onEnd();
+      return;
+    }
+    if (typeof window === "undefined" || !("speechSynthesis" in window)) {
+      if (onEnd) onEnd();
+      return;
+    }
 
     try {
-      // iOS Safari: cancel() tepat sebelum speak() membuat ucapan gulir
-      // selamanya. Hanya batalkan bila memang sedang ada yang bersuara.
-      if (window.speechSynthesis.speaking || window.speechSynthesis.pending) {
-        window.speechSynthesis.cancel();
-      }
-      const utterance = new SpeechSynthesisUtterance(text);
-      if (this.voice) {
-        utterance.voice = this.voice;
-        // Samakan lang dengan voice terpilih. Memaksa "id-ID" di atas voice
-        // non-Indonesia membuat Chrome di sebagian perangkat diam total.
-        utterance.lang = this.voice.lang || "id-ID";
+      const synth = window.speechSynthesis;
+      const start = () => {
+        if (isCancelled && isCancelled()) return;
+        const utterance = new SpeechSynthesisUtterance(text);
+        if (this.voice) {
+          utterance.voice = this.voice;
+          // Samakan lang dengan voice terpilih. Memaksa "id-ID" di atas voice
+          // non-Indonesia membuat Chrome di sebagian perangkat diam total.
+          utterance.lang = this.voice.lang || "id-ID";
+        } else {
+          utterance.lang = "id-ID";
+        }
+
+        const persona = this.getCurrentPersona();
+        utterance.rate = customRate ?? persona.rate;
+        utterance.pitch = customPitch ?? persona.pitch;
+
+        if (onEnd) {
+          utterance.onend = onEnd;
+          utterance.onerror = onEnd;
+        }
+        synth.speak(utterance);
+      };
+
+      if (synth.speaking || synth.pending) {
+        synth.cancel();
+        window.setTimeout(start, 80);
       } else {
-        utterance.lang = "id-ID";
+        start();
+      }
+    } catch {
+      // Jangan biarkan rantai bacaan macet bila speak() melempar error
+      if (onEnd) onEnd();
+    }
+  }
+
+  public speak(text: string, customRate?: number, customPitch?: number) {
+    const mySeq = ++this.currentSeq;
+    this.speakWithEnd(
+      text,
+      customRate,
+      customPitch,
+      undefined,
+      () => mySeq !== this.currentSeq
+    );
+  }
+
+  public stopSequence() {
+    this.currentSeq++;
+    if (typeof window !== "undefined" && "speechSynthesis" in window) {
+      try {
+        window.speechSynthesis.cancel();
+      } catch {
+        // Ignore
+      }
+    }
+  }
+
+  /**
+   * Membaca daftar teks SATU PER SATU — menunggu ucapan sebenarnya selesai
+   * (event onend) sebelum lanjut, bukan memakai timer tetap yang memotong
+   * ucapan di tengah kalimat pada engine TTS yang lambat.
+   * Dipakai mis. "Dengar Semua" pada Tabel Hitung.
+   */
+  public speakSequence(
+    items: string[],
+    options: {
+      onIndex?: (index: number) => void;
+      onDone?: () => void;
+      gapMs?: number;
+      rate?: number;
+      pitch?: number;
+    } = {}
+  ): number {
+    const mySeq = ++this.currentSeq;
+    const gapMs = options.gapMs ?? 450;
+    // Suara mati / engine tak tersedia: tetap jalankan sorotan baris agar
+    // "Dengar Semua" terlihat berjalan, memakai perkiraan durasi per baris.
+    const canSpeak =
+      this.speechEnabled &&
+      typeof window !== "undefined" &&
+      "speechSynthesis" in window;
+
+    const step = (index: number) => {
+      if (mySeq !== this.currentSeq) return;
+      if (index >= items.length) {
+        options.onDone?.();
+        return;
       }
 
-      const persona = this.getCurrentPersona();
-      utterance.rate = customRate ?? persona.rate;
-      utterance.pitch = customPitch ?? persona.pitch;
+      const text = items[index];
+      options.onIndex?.(index);
 
-      window.speechSynthesis.speak(utterance);
-    } catch {
-      // Ignore speech errors
-    }
+      let advanced = false;
+      const advance = () => {
+        if (mySeq !== this.currentSeq || advanced) return;
+        advanced = true;
+        window.setTimeout(() => step(index + 1), gapMs);
+      };
+
+      if (!canSpeak) {
+        window.setTimeout(advance, Math.max(1200, text.length * 80));
+        return;
+      }
+
+      // Jaring pengaman: kalau engine TTS macet dan onend tidak menyala,
+      // lanjutkan tetap (dengan batas yang jauh lebih longgar dari durasi
+      // wajar ucapan supaya engine lambat tidak terpotong).
+      const watchdog = window.setTimeout(
+        advance,
+        Math.max(6000, text.length * 180)
+      );
+      this.speakWithEnd(
+        text,
+        options.rate,
+        options.pitch,
+        () => {
+          window.clearTimeout(watchdog);
+          advance();
+        },
+        () => mySeq !== this.currentSeq
+      );
+    };
+
+    step(0);
+    return mySeq;
   }
 
   public testVoice(persona?: VoicePersona) {

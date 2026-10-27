@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { Lightbulb, Square, Volume2 } from "lucide-react";
 import { sounds } from "../../utils/audioEffects";
 import { speech } from "../../utils/speechHelper";
@@ -88,38 +88,28 @@ export const MathTable: React.FC = () => {
   // "melompat" berulang tiap kali anak mengetuk baris yang sama.
   const [tapSeq, setTapSeq] = useState(0);
 
-  const timersRef = useRef<number[]>([]);
-
   const theme = OPERATION_THEME[operation];
   const operationInfo = getOperationInfo(operation);
   const rows = buildMathTable(operation, tableNumber);
   const mascot: MathAnimal = animalFor(tableNumber);
 
-  const clearTimers = useCallback(() => {
-    timersRef.current.forEach((timer) => window.clearTimeout(timer));
-    timersRef.current = [];
-  }, []);
-
-  const stopSpeech = useCallback(() => {
-    if (typeof window !== "undefined" && "speechSynthesis" in window) {
-      window.speechSynthesis.cancel();
-    }
-  }, []);
-
   const stopReadingAll = useCallback(() => {
-    clearTimers();
+    // Rantai bacaan dihentikan lewat sesi di speechHelper (bukan timer) agar
+    // tidak ada ucapan yang tersisa menyusul setelah tombol Berhenti.
+    speech.stopSequence();
     setIsReadingAll(false);
     setActiveRow(null);
-    stopSpeech();
-  }, [clearTimers, stopSpeech]);
+  }, []);
 
-  // Ganti operasi/angka: hentikan bacaan yang sedang berjalan agar tidak tumpang tindih.
+  // Hentikan bacaan hanya saat komponen benar-benar meninggalkan layar.
+  // JANGAN cancel di cleanup per-ganti operasi/angka: state sudah diubah
+  // handler sebelum speak() sapaan, cleanup yang cancel justru memotong
+  // kalimat sapaan yang baru mulai dibacakan.
   useEffect(() => {
     return () => {
-      clearTimers();
-      stopSpeech();
+      speech.stopSequence();
     };
-  }, [operation, tableNumber, clearTimers, stopSpeech]);
+  }, []);
 
   const handleSelectOperation = (next: MathTableOperation) => {
     if (next === operation) return;
@@ -144,6 +134,9 @@ export const MathTable: React.FC = () => {
 
   const handleMascotTap = () => {
     sounds.playPop();
+    // Menyapa mascot di tengah "Dengar Semua": hentikan bacaan dulu supaya
+    // status tombol kembali normal dan sapaan tidak tertelan rantai bacaan.
+    stopReadingAll();
     speech.speak(
       `Halo! Aku ${mascot.name}, teman angka ${tableNumber}. Ayo dengarkan tabel ${operationInfo.label} ${tableNumber} ya!`,
       0.95,
@@ -153,7 +146,7 @@ export const MathTable: React.FC = () => {
 
   const handleTapRow = (row: MathTableRow, index: number) => {
     sounds.playPop();
-    clearTimers();
+    // speak() baru otomatis membatalkan rantai bacaan yang berjalan.
     setIsReadingAll(false);
     setActiveRow(index);
     setTapSeq((seq) => seq + 1);
@@ -167,27 +160,27 @@ export const MathTable: React.FC = () => {
     }
 
     sounds.playPop();
-    clearTimers();
-    stopSpeech();
     setIsReadingAll(true);
-    setActiveRow(0);
-    setTapSeq((seq) => seq + 1);
 
-    let delay = 250;
-    rows.forEach((row, index) => {
-      const timer = window.setTimeout(() => {
-        setActiveRow(index);
-        speech.speak(row.spoken, 1, 1.15);
-      }, delay);
-      timersRef.current.push(timer);
-      delay += Math.max(1600, row.spoken.length * 80);
-    });
-
-    const endTimer = window.setTimeout(() => {
-      setIsReadingAll(false);
-      setActiveRow(null);
-    }, delay + 200);
-    timersRef.current.push(endTimer);
+    // Baca baris per baris dengan menunggu ucapan SEBELUMNYA benar-benar
+    // selesai (event onend di speechHelper), bukan timer tetap — timer tetap
+    // memotong kalimat di tengah pada engine TTS yang lambat.
+    speech.speakSequence(
+      rows.map((row) => row.spoken),
+      {
+        gapMs: 450,
+        rate: 1,
+        pitch: 1.15,
+        onIndex: (index) => {
+          setActiveRow(index);
+          setTapSeq((seq) => seq + 1);
+        },
+        onDone: () => {
+          setIsReadingAll(false);
+          setActiveRow(null);
+        },
+      }
+    );
   };
 
   return (
