@@ -135,11 +135,11 @@ export const BASIC_READING_LIST: BasicReadingItem[] = [
     id: "3-4",
     category: "3-berurutan",
     fullArabic: "جَ حَ خَ",
-    fullLatin: "Ja - Ha - Kho",
+    fullLatin: "Ja - Ha - Kha",
     letters: [
       { arabic: "جَ", latin: "Ja", color: "text-teal-700", bgColor: "bg-teal-100" },
       { arabic: "حَ", latin: "Ha", color: "text-orange-700", bgColor: "bg-orange-100" },
-      { arabic: "خَ", latin: "Kho", color: "text-indigo-700", bgColor: "bg-indigo-100" },
+      { arabic: "خَ", latin: "Kha", color: "text-indigo-700", bgColor: "bg-indigo-100" },
     ],
   },
   {
@@ -342,10 +342,10 @@ export const BASIC_READING_LIST: BasicReadingItem[] = [
     id: "k-8",
     category: "kata-kombinasi",
     fullArabic: "خَلَقَ",
-    fullLatin: "Kho - La - Qo",
+    fullLatin: "Kha - La - Qo",
     meaning: "Menciptakan",
     letters: [
-      { arabic: "خَ", latin: "Kho", color: "text-indigo-700", bgColor: "bg-indigo-100" },
+      { arabic: "خَ", latin: "Kha", color: "text-indigo-700", bgColor: "bg-indigo-100" },
       { arabic: "لَ", latin: "La", color: "text-cyan-800", bgColor: "bg-cyan-100" },
       { arabic: "قَ", latin: "Qo", color: "text-purple-700", bgColor: "bg-purple-100" },
     ],

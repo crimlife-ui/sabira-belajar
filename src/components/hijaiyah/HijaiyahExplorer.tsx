@@ -17,64 +17,56 @@ export const HijaiyahExplorer: React.FC = () => {
           arabic: selectedLetter.fathah.arabic,
           sound: selectedLetter.fathah.sound,
           label: "Fathah (A)",
-          speechHarakat: "Fathah",
         };
       case "kasrah":
         return {
           arabic: selectedLetter.kasrah.arabic,
           sound: selectedLetter.kasrah.sound,
           label: "Kasrah (I)",
-          speechHarakat: "Kasrah",
         };
       case "dhommah":
         return {
           arabic: selectedLetter.dhommah.arabic,
           sound: selectedLetter.dhommah.sound,
           label: "Dhommah (U)",
-          speechHarakat: "Dhommah",
         };
       default:
         return {
           arabic: selectedLetter.arabic,
-          sound: selectedLetter.transliteration,
-          label: "Nama Asli",
-          speechHarakat: undefined,
+          // Huruf polos dibaca gaya iqro: pakai bacaan fathah (a, ba, ta, ...)
+          sound: selectedLetter.fathah.sound,
+          label: "Asli",
         };
     }
   };
 
   const currentDisplay = getCurrentDisplay();
 
+  // Bacaan pelafalan murni tanpa kata "Huruf": a, ba, ta, bi, bu, dst.
+  const getSoundFor = (item: HijaiyahItem) =>
+    activeHarakat === "kasrah"
+      ? item.kasrah.sound
+      : activeHarakat === "dhommah"
+      ? item.dhommah.sound
+      : item.fathah.sound;
+
   const handleSelectLetter = (item: HijaiyahItem) => {
     sounds.playPop();
     setSelectedLetter(item);
-    if (activeHarakat === "asli") {
-      speech.speak(`Huruf ${item.name}`, 0.9, 1.15);
-    } else {
-      const hInfo =
-        activeHarakat === "fathah"
-          ? item.fathah
-          : activeHarakat === "kasrah"
-          ? item.kasrah
-          : item.dhommah;
-      speech.speakHijaiyah(item.name, hInfo.name, hInfo.sound);
-    }
+    speech.speak(getSoundFor(item), 0.9, 1.15);
   };
 
   const handleSelectHarakat = (type: HarakatType) => {
     sounds.playPop();
     setActiveHarakat(type);
-    if (type === "asli") {
-      speech.speak(`Huruf ${selectedLetter.name}`, 0.9, 1.15);
-    } else {
-      const hInfo =
-        type === "fathah"
-          ? selectedLetter.fathah
-          : type === "kasrah"
-          ? selectedLetter.kasrah
-          : selectedLetter.dhommah;
-      speech.speakHijaiyah(selectedLetter.name, hInfo.name, hInfo.sound);
-    }
+    const item = selectedLetter;
+    const sound =
+      type === "kasrah"
+        ? item.kasrah.sound
+        : type === "dhommah"
+        ? item.dhommah.sound
+        : item.fathah.sound;
+    speech.speak(sound, 0.9, 1.15);
   };
 
   const handleNext = () => {
@@ -91,15 +83,7 @@ export const HijaiyahExplorer: React.FC = () => {
 
   const handleSpeakCurrent = () => {
     sounds.playPop();
-    if (activeHarakat === "asli") {
-      speech.speak(`Huruf ${selectedLetter.name}`, 0.9, 1.15);
-    } else {
-      speech.speakHijaiyah(
-        selectedLetter.name,
-        currentDisplay.speechHarakat,
-        currentDisplay.sound
-      );
-    }
+    speech.speak(currentDisplay.sound, 0.9, 1.15);
   };
 
   const handleSpeakExample = () => {
@@ -198,7 +182,7 @@ export const HijaiyahExplorer: React.FC = () => {
             <span>Mode: {currentDisplay.label}</span>
           </div>
           <h3 className="text-3xl sm:text-4xl font-black text-slate-800 tracking-wide">
-            {activeHarakat === "asli" ? selectedLetter.name : currentDisplay.sound}
+            {currentDisplay.sound}
           </h3>
           <p className="text-sm font-semibold text-slate-500">
             {activeHarakat === "asli"

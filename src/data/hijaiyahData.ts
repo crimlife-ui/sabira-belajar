@@ -102,7 +102,7 @@ export const HIJAIYAH_LIST: HijaiyahItem[] = [
     color: "text-indigo-600",
     bgColor: "bg-indigo-50",
     borderColor: "border-indigo-400",
-    fathah: { arabic: "خَ", sound: "Kho", name: "Fathah (Kho)" },
+    fathah: { arabic: "خَ", sound: "Kha", name: "Fathah (Kha)" },
     kasrah: { arabic: "خِ", sound: "Khi", name: "Kasrah (Khi)" },
     dhommah: { arabic: "خُ", sound: "Khu", name: "Dhommah (Khu)" },
     example: { wordArabic: "خَرُوْفٌ", wordLatin: "Kharuf", meaning: "Domba", emoji: "🐑" },

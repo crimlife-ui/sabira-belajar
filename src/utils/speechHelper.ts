@@ -317,14 +317,6 @@ class SpeechHelper {
     this.speak(praises[randomIndex]);
   }
 
-  public speakHijaiyah(name: string, harakatName?: string, sound?: string) {
-    if (harakatName && sound) {
-      this.speak(`${name}, berharakat ${harakatName}, dibaca ${sound}`, 0.9, 1.15);
-    } else {
-      this.speak(`Huruf ${name}`, 0.9, 1.15);
-    }
-  }
-
   // Bicara bahasa Inggris memakai voice en-* (fallback: voice apa pun dengan
   // lang en-US agar mesin TTS memilih aksen Inggris bila tersedia).
   public speakEnglish(text: string, customRate?: number, customPitch?: number) {
